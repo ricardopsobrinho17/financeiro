@@ -151,14 +151,156 @@ tr:hover td{background:#fafafa}
 .cat-outros{background:#F3F4F6;color:#374151}
 .saldo-pos{color:var(--verde-m);font-weight:700}.saldo-neg{color:var(--vermelho);font-weight:700}
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}.meta-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ══════════════ MOBILE (iPhone 15 / 16 Pro Max e similares) ══════════════ */
 @media(max-width:768px){
-  .sidebar{width:100%;min-height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:0}
-  .main{margin-left:0;padding:16px}
-  .two-col{grid-template-columns:1fr}
-  .kpi-row{grid-template-columns:repeat(2,1fr)}
-  .nav{display:flex;flex-direction:row;overflow-x:auto;padding:6px 0}
-  .nav-item{padding:8px 14px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
-  .nav-item.active{border-bottom-color:var(--ouro);border-left:none}
+  html{font-size:15px}
+  body{display:flex;flex-direction:column}
+
+  /* Sidebar transforma em header fixo no topo + nav scroll horizontal */
+  .sidebar{
+    width:100%;min-height:auto;position:sticky;left:0;top:0;right:0;
+    flex-direction:column;padding:0;z-index:200;
+    box-shadow:0 2px 12px rgba(0,0,0,.25);
+  }
+  .sidebar-logo{padding:14px 16px 10px;display:flex;align-items:baseline;gap:8px;border-bottom:none}
+  .sidebar-logo h1{font-size:1.05rem;line-height:1;white-space:nowrap}
+  .sidebar-logo h1 br{display:none}
+  .sidebar-logo p{font-size:.68rem;margin-top:0}
+
+  .sidebar-month{padding:0 16px 10px;border-bottom:none}
+  .month-select{padding:9px 10px;font-size:.85rem}
+
+  .nav{
+    display:flex;flex-direction:row;overflow-x:auto;padding:4px 8px 8px;
+    flex:0 0 auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav-item{
+    padding:8px 13px;border-left:none;border-bottom:3px solid transparent;
+    white-space:nowrap;flex-shrink:0;font-size:.82rem;border-radius:8px 8px 0 0;
+  }
+  .nav-item.active{border-bottom-color:var(--ouro);border-left:none;background:rgba(201,168,76,.15)}
+  .nav-item svg{width:15px;height:15px}
+
+  /* Termômetro, sync status, user badge: colapsam em uma linha compacta */
+  .thermometer{margin:8px 16px 0;padding:10px 12px}
+  .thermo-label{font-size:.62rem;margin-bottom:6px}
+  .thermo-value{font-size:.78rem}
+  .thermo-sub{font-size:.62rem}
+
+  /* Sync status + last update + user badge: compactos, empilhados mas pequenos */
+  #syncStatus{margin:6px 16px 0;padding:5px 10px;font-size:.66rem;width:auto}
+  #lastUpdateBox{margin:4px 16px 0;padding:5px 10px;font-size:.62rem}
+  #lastUpdateBox br{display:none}
+  #userBadgeBox{margin:4px 16px 8px;padding:5px 10px;font-size:.68rem}
+
+  /* Botões de ação: fixos como barra inferior sticky, fáceis pro dedão */
+  .sidebar-actions{
+    padding:8px 12px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.1);
+  }
+  .btn-add{margin-bottom:0;padding:11px 8px;font-size:.74rem;flex:1}
+  .btn-add svg{width:14px;height:14px}
+
+  /* Conteúdo principal: ocupa tudo, com respiro pro header fixo */
+  .main{
+    margin-left:0;padding:14px 12px 90px;
+    padding-top:14px;
+    max-width:100vw;
+  }
+
+  .page-title{font-size:1.35rem}
+  .page-sub{font-size:.78rem;margin-bottom:16px}
+
+  /* KPIs: 2 colunas, cards mais compactos */
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+  .kpi{padding:13px 14px}
+  .kpi-label{font-size:.62rem}
+  .kpi-value{font-size:1.1rem}
+  .kpi-sub{font-size:.62rem}
+
+  /* Layout de 2 colunas → 1 coluna empilhada */
+  .two-col{grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+
+  /* Cards e gráficos */
+  .chart-card{padding:14px;margin-bottom:14px}
+  .chart-title{font-size:.8rem}
+  .chart-wrap{height:220px}
+
+  /* Summary bar: quebra em 2 linhas se precisar */
+  .summary-bar{flex-wrap:wrap;padding:14px;gap:10px 14px}
+  .sumbar-item{flex:1 1 40%;min-width:120px}
+  .sumbar-div{display:none}
+  .sumbar-val{font-size:.92rem}
+
+  /* Metas grid: 1 coluna no celular */
+  .meta-grid{grid-template-columns:1fr;gap:10px}
+
+  /* Tabelas: scroll horizontal suave, fonte menor, touch-friendly */
+  .table-wrap{margin-bottom:14px;border-radius:10px}
+  .table-wrap table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+  .table-wrap thead,.table-wrap tbody{display:block}
+  /* Mantemos table como scroll-x simples (mais previsível que reflow em linha) */
+  table{min-width:480px}
+  th{padding:8px 10px;font-size:.66rem}
+  td{padding:9px 10px;font-size:.8rem}
+  .btn-edit,.btn-del{padding:6px;font-size:1rem}
+
+  .section-title{font-size:1.05rem}
+  .section-sub{font-size:.72rem}
+  .section-header .btn{padding:8px 12px;font-size:.76rem}
+
+  /* Formulário de investimentos: 1 coluna */
+  .inv-form{padding:16px}
+  .form-row{grid-template-columns:1fr;gap:10px;margin-bottom:10px}
+  .form-group input,.form-group select{padding:11px 12px;font-size:.9rem} /* evita zoom no iOS */
+
+  /* Year sections */
+  .year-title{font-size:.95rem;padding:10px 14px}
+
+  /* MODAL: ocupa quase a tela toda, vira "sheet" de baixo pra cima */
+  .modal-overlay{align-items:flex-end}
+  .modal{
+    max-width:100%;width:100%;border-radius:18px 18px 0 0;
+    max-height:88vh;padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    animation:slideUpMobile .28s cubic-bezier(.32,.72,0,1);
+  }
+  @keyframes slideUpMobile{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .modal-title{font-size:1.1rem;margin-bottom:14px}
+  .modal-two{grid-template-columns:1fr;gap:0}
+  .modal-row input,.modal-row select,.modal-row textarea{padding:11px 13px;font-size:.95rem}
+  .modal-footer{flex-direction:column-reverse;gap:8px}
+  .modal-footer .btn{width:100%;padding:13px;font-size:.9rem}
+
+  /* Toast: centralizado e mais largo */
+  .toast{left:16px;right:16px;bottom:16px;text-align:center;font-size:.8rem}
+
+  /* Inputs: font-size >=16px evita zoom automático do iOS Safari */
+  input,select,textarea{font-size:16px !important}
+}
+
+/* iPhone 15 (390×844) e variantes estreitas: ajustes finos extras */
+@media(max-width:400px){
+  .kpi-row{gap:8px}
+  .kpi{padding:11px 12px}
+  .kpi-value{font-size:1rem}
+  .btn-add{font-size:.68rem;padding:10px 6px}
+  .nav-item{padding:7px 10px;font-size:.78rem}
+  .sidebar-logo h1{font-size:.98rem}
+}
+
+/* iPhone 16 Pro Max e telas grandes (430×932): um pouco mais de respiro */
+@media(min-width:415px) and (max-width:768px){
+  .kpi-row{gap:12px}
+  .main{padding-left:16px;padding-right:16px}
+}
+
+/* Notch / Dynamic Island: respeita a safe area no topo do header fixo */
+@supports(padding:max(0px)){
+  @media(max-width:768px){
+    .sidebar{padding-top:env(safe-area-inset-top)}
+  }
 }
 </style>
 </head>
@@ -208,10 +350,10 @@ tr:hover td{background:#fafafa}
     <div class="sync-dot" id="syncDot"></div>
     <span id="syncText">Conectado ao Firebase</span>
   </div>
-  <div style="margin:0 20px 10px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.7rem;color:rgba(255,255,255,.55)">
+  <div id="lastUpdateBox" style="margin:0 20px 10px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.7rem;color:rgba(255,255,255,.55)">
     <span id="lastUpdateText">—</span>
   </div>
-  <div style="margin:0 20px 8px;padding:7px 12px;border-radius:8px;background:rgba(201,168,76,.1);display:flex;align-items:center;justify-content:space-between;font-size:.75rem">
+  <div id="userBadgeBox" style="margin:0 20px 8px;padding:7px 12px;border-radius:8px;background:rgba(201,168,76,.1);display:flex;align-items:center;justify-content:space-between;font-size:.75rem">
     <span style="color:rgba(255,255,255,.6)">Você é:</span>
     <span style="color:var(--ouro);font-weight:600;cursor:pointer" id="currentUserName" onclick="changeUser()">—</span>
   </div>
