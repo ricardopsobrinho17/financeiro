@@ -208,6 +208,13 @@ tr:hover td{background:#fafafa}
     <div class="sync-dot" id="syncDot"></div>
     <span id="syncText">Conectado ao Firebase</span>
   </div>
+  <div style="margin:0 20px 10px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.7rem;color:rgba(255,255,255,.55)">
+    <span id="lastUpdateText">—</span>
+  </div>
+  <div style="margin:0 20px 8px;padding:7px 12px;border-radius:8px;background:rgba(201,168,76,.1);display:flex;align-items:center;justify-content:space-between;font-size:.75rem">
+    <span style="color:rgba(255,255,255,.6)">Você é:</span>
+    <span style="color:var(--ouro);font-weight:600;cursor:pointer" id="currentUserName" onclick="changeUser()">—</span>
+  </div>
   <div class="sidebar-actions">
     <button class="btn-add gasto" onclick="openModal('gasto')">
       <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2.5" d="M12 5v14M5 12h14"/></svg>Novo Gasto
@@ -381,14 +388,55 @@ function setSyncStatus(status, text){
   dot.className='sync-dot'+(status==='saving'?' pulse':'');
 }
 
+// ── USUÁRIO ATUAL ──────────────────────────────────────────────────────────
+let currentUser = localStorage.getItem('financeiro_user') || null;
+
+function ensureUser(){
+  if(!currentUser){
+    let name = '';
+    while(!name){
+      name = prompt('Quem é você? (Digite seu nome — usado só para mostrar quem fez a última alteração)');
+      if(name === null) name = 'Convidado';
+      name = (name||'').trim();
+    }
+    currentUser = name;
+    localStorage.setItem('financeiro_user', currentUser);
+  }
+  document.getElementById('currentUserName').textContent = currentUser;
+}
+
+function changeUser(){
+  const name = prompt('Trocar usuário. Digite o novo nome:', currentUser||'');
+  if(name && name.trim()){
+    currentUser = name.trim();
+    localStorage.setItem('financeiro_user', currentUser);
+    document.getElementById('currentUserName').textContent = currentUser;
+    showToast('👤 Agora você é '+currentUser);
+  }
+}
+
+function updateLastEditDisplay(updatedBy, updatedAt){
+  const el = document.getElementById('lastUpdateText');
+  if(!updatedBy){ el.textContent = 'Nenhuma alteração registrada ainda'; return; }
+  let when = '';
+  try {
+    const d = new Date(updatedAt);
+    when = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  } catch(e){ when = ''; }
+  el.innerHTML = '✏️ Última alteração por <strong style="color:#fff">'+updatedBy+'</strong>'+(when?'<br><span style="opacity:.7">'+when+'</span>':'');
+}
+
 // ── FIREBASE LOAD & SAVE ─────────────────────────────────────────────────────
 async function loadFromFirebase(){
   setSyncStatus('saving','Carregando dados...');
+  ensureUser();
   try {
     const docRef = doc(db,'financeiro','dados');
     const snap = await getDoc(docRef);
     if(snap.exists()){
-      data = snap.data().meses || {};
+      const d = snap.data();
+      data = d.meses || {};
+      updateLastEditDisplay(d.updatedBy, d.updatedAt);
       setSyncStatus('ok','Dados carregados ✓');
     } else {
       // Primeira vez: sobe o SEED
@@ -410,8 +458,10 @@ async function saveToFirebase(immediate=false){
   const doSave = async () => {
     setSyncStatus('saving','Salvando...');
     try {
-      await setDoc(doc(db,'financeiro','dados'),{meses: data, updatedAt: new Date().toISOString()});
+      const now = new Date().toISOString();
+      await setDoc(doc(db,'financeiro','dados'),{meses: data, updatedAt: now, updatedBy: currentUser||'Desconhecido'});
       setSyncStatus('ok','Salvo ✓ '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+      updateLastEditDisplay(currentUser||'Desconhecido', now);
     } catch(e){
       console.error(e);
       setSyncStatus('error','Erro ao salvar — verifique conexão');
@@ -725,9 +775,29 @@ window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 window.saveItem=saveItem;window.editItem=editItem;window.deleteItem=deleteItem;
 window.deleteItemFromModal=deleteItemFromModal;window.saveBudgets=saveBudgets;
 window.createNewMonth=createNewMonth;window.calcProjecao=calcProjecao;
+window.changeUser=changeUser;
+
+// ── LISTENER EM TEMPO REAL ──────────────────────────────────────────────────
+// Se a outra pessoa salvar algo enquanto esta página está aberta, atualiza sozinho.
+let isLocalChange = false;
+function startRealtimeSync(){
+  onSnapshot(doc(db,'financeiro','dados'), (snap) => {
+    if(!snap.exists()) return;
+    const d = snap.data();
+    // Evita recarregar quando a mudança veio de nós mesmos (já atualizamos a UI no save)
+    if(d.updatedBy === currentUser && Date.now() - new Date(d.updatedAt).getTime() < 3000) return;
+    data = d.meses || {};
+    updateLastEditDisplay(d.updatedBy, d.updatedAt);
+    buildMonthSelect();
+    updateAll();
+    if(d.updatedBy && d.updatedBy !== currentUser){
+      showToast('🔄 '+d.updatedBy+' atualizou os dados');
+    }
+  }, (err) => console.error('Erro no listener:', err));
+}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-loadFromFirebase();
+loadFromFirebase().then(()=>startRealtimeSync());
 </script>
 </body>
 </html>
