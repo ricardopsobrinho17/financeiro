@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanças Familiar — Ricardo & Bruna</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--verde:#0A3D2E;--verde-m:#1A6B4E;--ouro:#C9A84C;--ouro-l:#FFF8E7;--creme:#F7F3EC;--cinza:#1C1C1E;--cinza-m:#6B7280;--cinza-l:#F0F2F5;--branco:#FFFFFF;--vermelho:#B91C1C;--vermelho-l:#FEE2E2;--azul:#1D4ED8;--azul-l:#EFF6FF;--teal:#0F766E;--teal-l:#CCFBF1;--sidebar-w:252px;--radius:12px;--shadow:0 2px 16px rgba(0,0,0,.08);--shadow-lg:0 8px 40px rgba(0,0,0,.14)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'Inter',sans-serif;background:var(--creme);color:var(--cinza);min-height:100vh;display:flex}
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--verde);display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100;padding:0 0 20px}
+.sidebar-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo h1{font-family:'DM Serif Display',serif;color:var(--ouro);font-size:1.2rem;line-height:1.2}
+.sidebar-logo p{color:rgba(255,255,255,.5);font-size:.72rem;margin-top:3px}
+.sidebar-month{padding:10px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-month label{color:rgba(255,255,255,.5);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}
+.month-select{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:8px;padding:7px 10px;font-size:.82rem;margin-top:5px;cursor:pointer}
+.month-select option{background:var(--verde);color:#fff}
+.nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px 20px;color:rgba(255,255,255,.65);cursor:pointer;transition:.15s;font-size:.85rem;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:rgba(201,168,76,.12);color:var(--ouro);border-left-color:var(--ouro)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+/* Termômetro */
+.thermometer{margin:0 20px 8px;background:rgba(255,255,255,.06);border-radius:var(--radius);padding:12px 14px}
+.thermo-label{color:rgba(255,255,255,.5);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.thermo-track{height:7px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
+.thermo-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.34,1.56,.64,1);background:linear-gradient(90deg,#ef4444 0%,var(--ouro) 50%,#22c55e 100%);background-size:200% 100%}
+.thermo-value{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#fff;margin-top:7px;font-weight:600}
+.thermo-sub{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
+/* Sync status */
+.sync-status{margin:0 20px 8px;padding:8px 12px;border-radius:8px;font-size:.72rem;display:flex;align-items:center;gap:6px;transition:.3s}
+.sync-status.ok{background:rgba(34,197,94,.12);color:#4ade80}
+.sync-status.saving{background:rgba(201,168,76,.12);color:var(--ouro)}
+.sync-status.error{background:rgba(239,68,68,.12);color:#f87171}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sync-dot.pulse{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* Botões sidebar */
+.sidebar-actions{padding:0 20px}
+.btn-add{width:100%;padding:10px 12px;border-radius:9px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:.82rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;margin-bottom:7px}
+.btn-add.gasto{background:var(--vermelho);color:#fff}.btn-add.gasto:hover{background:#9b1c1c}
+.btn-add.receita{background:var(--verde-m);color:#fff}.btn-add.receita:hover{background:#0e5234}
+.btn-add.investimento{background:var(--ouro);color:var(--verde)}.btn-add.investimento:hover{background:#b8963d}
+/* MAIN */
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;padding:26px 30px;max-width:calc(100vw - var(--sidebar-w))}
+.page{display:none}.page.active{display:block}
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi{background:var(--branco);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.04);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.verde::before{background:var(--verde-m)}.kpi.vermelho::before{background:var(--vermelho)}.kpi.ouro::before{background:var(--ouro)}.kpi.azul::before{background:var(--azul)}
+.kpi-label{font-size:.7rem;color:var(--cinza-m);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.kpi-value{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;margin-top:5px;line-height:1}
+.kpi-value.pos{color:var(--verde-m)}.kpi-value.neg{color:var(--vermelho)}
+.kpi-sub{font-size:.7rem;color:var(--cinza-m);margin-top:4px}
+/* Layout */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--verde)}
+.section-sub{color:var(--cinza-m);font-size:.75rem;margin-top:2px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+/* Tables */
+.table-wrap{background:var(--branco);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.04);overflow:hidden;margin-bottom:18px}
+.table-head{padding:11px 16px;background:var(--verde);display:flex;align-items:center;justify-content:space-between}
+.table-head-title{color:#fff;font-weight:600;font-size:.85rem}
+table{width:100%;border-collapse:collapse}
+th{background:var(--cinza-l);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--cinza-m);padding:8px 14px;text-align:left;border-bottom:1px solid #e5e7eb}
+td{padding:9px 14px;border-bottom:1px solid #f3f4f6;font-size:.83rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:600}
+.amt{font-family:'JetBrains Mono',monospace;font-weight:600}
+.amt.neg{color:var(--vermelho)}.amt.pos{color:var(--verde-m)}
+.btn-del{background:none;border:none;color:#d1d5db;cursor:pointer;padding:3px;border-radius:4px;transition:.12s;font-size:.9rem}
+.btn-del:hover{color:var(--vermelho);background:var(--vermelho-l)}
+.btn-edit{background:none;border:none;color:#d1d5db;cursor:pointer;padding:3px;border-radius:4px;transition:.12s;margin-right:2px}
+.btn-edit:hover{color:var(--azul);background:var(--azul-l)}
+/* Charts */
+.chart-card{background:var(--branco);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.04);padding:16px;margin-bottom:18px}
+.chart-title{font-weight:600;color:var(--cinza);font-size:.85rem;margin-bottom:12px}
+.chart-wrap{position:relative;height:240px}
+/* Summary bar */
+.summary-bar{background:var(--branco);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:18px;display:flex;gap:16px;align-items:center}
+.sumbar-item{flex:1;text-align:center}
+.sumbar-label{font-size:.68rem;color:var(--cinza-m);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.sumbar-val{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;margin-top:4px}
+.sumbar-div{width:1px;background:#e5e7eb;height:36px;flex-shrink:0}
+.progress-bar{width:100%;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px;transition:width .6s ease}
+/* Metas */
+.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.meta-card{background:var(--branco);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;border:1px solid rgba(0,0,0,.04)}
+.meta-cat{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--cinza-m)}
+.meta-vals{display:flex;justify-content:space-between;margin-top:8px;font-size:.75rem}
+.meta-bar{height:5px;background:#e5e7eb;border-radius:3px;margin-top:6px;overflow:hidden}
+.meta-fill{height:100%;border-radius:3px;transition:width .5s ease}
+/* Anual */
+.year-section{margin-bottom:26px}
+.year-title{font-family:'DM Serif Display',serif;padding:10px 16px;background:var(--verde);color:var(--ouro);border-radius:var(--radius) var(--radius) 0 0;font-size:1rem}
+/* Invest form */
+.inv-form{background:var(--branco);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group label{font-size:.73rem;font-weight:600;color:var(--cinza-m);display:block;margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.83rem;font-family:'Inter',sans-serif;transition:.15s;background:#fff}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--verde-m);box-shadow:0 0 0 3px rgba(26,107,78,.12)}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--branco);border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:460px;padding:24px;position:relative;animation:slideUp .25s ease;max-height:90vh;overflow-y:auto}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--verde);margin-bottom:16px}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--cinza-m);width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.modal-close:hover{background:var(--cinza-l)}
+.modal-row{margin-bottom:12px}
+.modal-row label{display:block;font-size:.75rem;font-weight:600;color:var(--cinza-m);margin-bottom:4px}
+.modal-row input,.modal-row select,.modal-row textarea{width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:.85rem;font-family:'Inter',sans-serif;transition:.15s}
+.modal-row input:focus,.modal-row select:focus,.modal-row textarea:focus{outline:none;border-color:var(--verde-m);box-shadow:0 0 0 3px rgba(26,107,78,.12)}
+.modal-row textarea{min-height:60px;resize:vertical}
+.modal-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-footer{display:flex;gap:8px;margin-top:18px;justify-content:flex-end}
+.btn{padding:9px 18px;border-radius:9px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:.83rem;font-weight:600;transition:.15s}
+.btn-primary{background:var(--verde);color:#fff}.btn-primary:hover{background:var(--verde-m)}
+.btn-danger{background:var(--vermelho);color:#fff}.btn-danger:hover{background:#9b1c1c}
+.btn-secondary{background:var(--cinza-l);color:var(--cinza)}.btn-secondary:hover{background:#e5e7eb}
+.btn-gold{background:var(--ouro);color:var(--verde)}.btn-gold:hover{background:#b8963d}
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--cinza);color:#fff;padding:10px 16px;border-radius:10px;font-size:.83rem;z-index:999;box-shadow:var(--shadow-lg);transform:translateY(80px);transition:.3s cubic-bezier(.34,1.56,.64,1);opacity:0}
+.toast.show{transform:translateY(0);opacity:1}
+/* Utils */
+.page-title{font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--verde);margin-bottom:4px}
+.page-sub{color:var(--cinza-m);font-size:.83rem;margin-bottom:22px}
+.text-right{text-align:right}.bold{font-weight:700}
+.empty{padding:32px;text-align:center;color:var(--cinza-m);font-size:.85rem}
+/* Loading */
+.loading-screen{position:fixed;inset:0;background:var(--verde);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+.loading-screen.hide{opacity:0;pointer-events:none}
+.loading-logo{font-family:'DM Serif Display',serif;color:var(--ouro);font-size:2rem;margin-bottom:12px}
+.loading-sub{color:rgba(255,255,255,.5);font-size:.85rem;margin-bottom:24px}
+.loading-bar{width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.loading-fill{height:100%;background:var(--ouro);border-radius:2px;animation:load 1.5s ease-in-out forwards}
+@keyframes load{from{width:0}to{width:100%}}
+/* Tags */
+.cat-moradia{background:#DBEAFE;color:#1D4ED8}.cat-transporte{background:#EDE9FE;color:#5B21B6}
+.cat-comunicacao{background:#ECFDF5;color:#065F46}.cat-saude{background:#D1FAE5;color:#065F46}
+.cat-mei{background:#FEF3C7;color:#92400E}.cat-cartoes{background:#FCE7F3;color:#9D174D}
+.cat-impostos{background:#FEF9C3;color:#713F12}.cat-investimento{background:#CCFBF1;color:#0F766E}
+.cat-outros{background:#F3F4F6;color:#374151}
+.saldo-pos{color:var(--verde-m);font-weight:700}.saldo-neg{color:var(--vermelho);font-weight:700}
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}.meta-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+  .sidebar{width:100%;min-height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:0}
+  .main{margin-left:0;padding:16px}
+  .two-col{grid-template-columns:1fr}
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .nav{display:flex;flex-direction:row;overflow-x:auto;padding:6px 0}
+  .nav-item{padding:8px 14px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
+  .nav-item.active{border-bottom-color:var(--ouro);border-left:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loading">
+  <div class="loading-logo">Finanças Familiar</div>
+  <div class="loading-sub">Ricardo & Bruna</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo"><h1>Finanças<br>Familiar</h1><p>Ricardo & Bruna</p></div>
+  <div class="sidebar-month">
+    <label>Mês visualizado</label>
+    <select class="month-select" id="monthSelect" onchange="changeMonth(this.value)"></select>
+  </div>
+  <nav class="nav">
+    <div class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('mensal',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Mês Atual
+    </div>
+    <div class="nav-item" onclick="showPage('anual',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Resumo Anual
+    </div>
+    <div class="nav-item" onclick="showPage('categorias',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>Por Categoria
+    </div>
+    <div class="nav-item" onclick="showPage('metas',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke-width="2"/><path stroke-width="2" d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>Metas
+    </div>
+    <div class="nav-item" onclick="showPage('investimentos',this)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Investimentos
+    </div>
+  </nav>
+  <div class="thermometer">
+    <div class="thermo-label">Saúde Financeira</div>
+    <div class="thermo-track"><div class="thermo-fill" id="thermoFill" style="width:50%"></div></div>
+    <div class="thermo-value" id="thermoVal">—</div>
+    <div class="thermo-sub" id="thermoSub">carregando...</div>
+  </div>
+  <div class="sync-status ok" id="syncStatus">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncText">Conectado ao Firebase</span>
+  </div>
+  <div class="sidebar-actions">
+    <button class="btn-add gasto" onclick="openModal('gasto')">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2.5" d="M12 5v14M5 12h14"/></svg>Novo Gasto
+    </button>
+    <button class="btn-add receita" onclick="openModal('receita')">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2.5" d="M12 5v14M5 12h14"/></svg>Nova Receita
+    </button>
+    <button class="btn-add investimento" onclick="openModal('investimento')">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Investimento
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+<!-- DASHBOARD -->
+<section class="page active" id="page-dashboard">
+  <div class="page-title" id="dash-title">Dashboard</div>
+  <p class="page-sub" id="dash-sub">Visão geral do mês</p>
+  <div class="kpi-row">
+    <div class="kpi verde"><div class="kpi-label">Receita Total</div><div class="kpi-value pos" id="kpi-rec">—</div><div class="kpi-sub" id="kpi-rec-sub">—</div></div>
+    <div class="kpi vermelho"><div class="kpi-label">Gasto Total</div><div class="kpi-value neg" id="kpi-gas">—</div><div class="kpi-sub" id="kpi-gas-sub">—</div></div>
+    <div class="kpi ouro"><div class="kpi-label">Saldo do Mês</div><div class="kpi-value" id="kpi-sal">—</div><div class="kpi-sub" id="kpi-sal-sub">—</div></div>
+    <div class="kpi azul"><div class="kpi-label">Taxa de Poupança</div><div class="kpi-value" id="kpi-poupa">—</div><div class="kpi-sub" id="kpi-inv-sub">—</div></div>
+  </div>
+  <div class="two-col">
+    <div class="chart-card"><div class="chart-title">Distribuição de Gastos — Categorias</div><div class="chart-wrap"><canvas id="chartPie"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Evolução Mensal — Receita × Gasto</div><div class="chart-wrap"><canvas id="chartLine"></canvas></div></div>
+  </div>
+  <div class="chart-card"><div class="chart-title">Gastos por Categoria — Comparativo Mensal</div><div class="chart-wrap" style="height:200px"><canvas id="chartBar"></canvas></div></div>
+</section>
+<!-- MÊS ATUAL -->
+<section class="page" id="page-mensal">
+  <div class="page-title" id="mensal-title">Mês Atual</div>
+  <p class="page-sub">Receitas e gastos detalhados</p>
+  <div class="summary-bar" id="mensal-summary"></div>
+  <div class="two-col">
+    <div>
+      <div class="section-header">
+        <div><div class="section-title">💸 Gastos</div><div class="section-sub" id="gastos-count">—</div></div>
+        <button class="btn btn-danger" onclick="openModal('gasto')" style="font-size:.78rem;padding:7px 12px">+ Novo</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th class="text-right">Valor</th><th></th></tr></thead><tbody id="tbl-gastos"></tbody></table></div>
+    </div>
+    <div>
+      <div class="section-header">
+        <div><div class="section-title">💰 Receitas</div><div class="section-sub" id="receitas-count">—</div></div>
+        <button class="btn btn-primary" onclick="openModal('receita')" style="font-size:.78rem;padding:7px 12px">+ Nova</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th class="text-right">Valor</th><th></th></tr></thead><tbody id="tbl-receitas"></tbody></table></div>
+    </div>
+  </div>
+</section>
+<!-- RESUMO ANUAL -->
+<section class="page" id="page-anual">
+  <div class="page-title">Resumo Anual</div>
+  <p class="page-sub">Histórico completo por ano e mês</p>
+  <div id="anual-content"></div>
+</section>
+<!-- CATEGORIAS -->
+<section class="page" id="page-categorias">
+  <div class="page-title">Gastos por Categoria</div>
+  <p class="page-sub" id="cat-sub">Distribuição e análise</p>
+  <div class="chart-card"><div class="chart-title">Gastos por Categoria — <span id="cat-chart-month"></span></div><div class="chart-wrap" style="height:210px"><canvas id="chartCatBar"></canvas></div></div>
+  <div class="meta-grid" id="cat-cards"></div>
+</section>
+<!-- METAS -->
+<section class="page" id="page-metas">
+  <div class="page-title">Metas Financeiras</div>
+  <p class="page-sub">Orçamento por categoria e evolução da poupança</p>
+  <div class="two-col">
+    <div>
+      <div class="section-header"><div class="section-title">🎯 Orçamento</div><button class="btn btn-gold" onclick="openModal('meta')">Editar Metas</button></div>
+      <div id="metas-list"></div>
+    </div>
+    <div>
+      <div class="chart-card"><div class="chart-title">Taxa de Poupança — Últimos 12 meses</div><div class="chart-wrap" style="height:190px"><canvas id="chartPoupanca"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Investimento Mensal</div><div class="chart-wrap" style="height:190px"><canvas id="chartInv"></canvas></div></div>
+    </div>
+  </div>
+</section>
+<!-- INVESTIMENTOS -->
+<section class="page" id="page-investimentos">
+  <div class="page-title">Plano de Investimentos</div>
+  <p class="page-sub">Projeção patrimonial e estratégias de crescimento</p>
+  <div class="inv-form">
+    <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--verde);margin-bottom:14px">⚙️ Parâmetros</div>
+    <div class="form-row">
+      <div class="form-group"><label>Patrimônio Atual (R$)</label><input type="number" id="inv-patrimonio" value="45000" oninput="calcProjecao()"></div>
+      <div class="form-group"><label>Aporte Mensal Meta (R$)</label><input type="number" id="inv-aporte" value="2000" oninput="calcProjecao()"></div>
+      <div class="form-group"><label>Retorno Anual (%)</label><input type="number" id="inv-retorno" value="12" step="0.1" oninput="calcProjecao()"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Meta Patrimônio (R$)</label><input type="number" id="inv-meta" value="200000" oninput="calcProjecao()"></div>
+      <div class="form-group"><label>Horizonte (anos)</label><input type="number" id="inv-anos" value="10" min="1" max="30" oninput="calcProjecao()"></div>
+      <div class="form-group"><label>Inflação Anual (%)</label><input type="number" id="inv-inflacao" value="5.5" step="0.1" oninput="calcProjecao()"></div>
+    </div>
+  </div>
+  <div class="chart-card"><div class="chart-title">Projeção de Crescimento Patrimonial</div><div class="chart-wrap" style="height:240px"><canvas id="chartProjecao"></canvas></div></div>
+  <div class="two-col">
+    <div class="table-wrap">
+      <div class="table-head"><span class="table-head-title">📋 Projeção Detalhada</span></div>
+      <table><thead><tr><th>Ano</th><th>Pat. Início</th><th>Aportes</th><th>Rendimento</th><th>Pat. Fim</th></tr></thead><tbody id="tbl-projecao"></tbody></table>
+    </div>
+    <div><div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--verde);margin-bottom:12px">💡 Estratégias</div><div id="estrategias-list"></div></div>
+  </div>
+</section>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title" id="modal-title">Novo Lançamento</div>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── Firebase Config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDF1SuTzpHldqDXnPwaylc_cUPn0w1xsxg",
+  authDomain: "financeiro-familiar-de54b.firebaseapp.com",
+  projectId: "financeiro-familiar-de54b",
+  storageBucket: "financeiro-familiar-de54b.firebasestorage.app",
+  messagingSenderId: "903012323843",
+  appId: "1:903012323843:web:b0e6d5e7b20672da24b436"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── SEED DATA ────────────────────────────────────────────────────────────────
+const SEED = {"2026-08":{"gastos":[{"desc":"BANESCARD VISA","valor":6000},{"desc":"C6","valor":2000},{"desc":"NUBANK BRUNA","valor":1500},{"desc":"UNIMED","valor":804.64},{"desc":"CONDOMÍNIO","valor":600},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":180},{"desc":"VIVO BRUNA","valor":75},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":500},{"desc":"CARTÃO SANTANDER","valor":450},{"desc":"PSICOLOGA - BRUNA","valor":1150},{"desc":"IPVA 04/06","valor":436.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7000},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":800}]},"2026-07":{"gastos":[{"desc":"BANESCARD VISA","valor":6600},{"desc":"C6","valor":3000},{"desc":"NUBANK BRUNA","valor":1500},{"desc":"UNIMED","valor":804.64},{"desc":"CONDOMÍNIO","valor":600},{"desc":"INTERNET + CELULAR VIVO","valor":160},{"desc":"ENERGIA","valor":180},{"desc":"VIVO BRUNA","valor":75},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":500},{"desc":"CARTÃO SANTANDER","valor":450},{"desc":"PSICOLOGA - BRUNA","valor":1150},{"desc":"IPVA 04/06","valor":436.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7000},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":8000}]},"2026-06":{"gastos":[{"desc":"BANESCARD VISA","valor":6504.69},{"desc":"C6","valor":4006.55},{"desc":"NUBANK BRUNA","valor":2328.48},{"desc":"UNIMED","valor":860.23},{"desc":"CONDOMÍNIO","valor":648.91},{"desc":"INTERNET + CELULAR VIVO","valor":160},{"desc":"ENERGIA","valor":159.41},{"desc":"VIVO BRUNA","valor":80},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":365.59},{"desc":"CARTÃO SANTANDER","valor":919.6},{"desc":"PSICOLOGA - BRUNA","valor":920},{"desc":"COREN - BRUNA","valor":426},{"desc":"IPVA 03/06","valor":436.81},{"desc":"IMPOSTO DE RENDA","valor":195.84}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7176.78},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":4000},{"desc":"VALES BANSEG - RICARDO","valor":680}]},"2026-05":{"gastos":[{"desc":"BANESCARD VISA","valor":6252.06},{"desc":"C6","valor":2965.24},{"desc":"NUBANK BRUNA","valor":2701.58},{"desc":"UNIMED","valor":913.71},{"desc":"CONDOMÍNIO","valor":667.96},{"desc":"INTERNET + CELULAR VIVO","valor":160},{"desc":"ENERGIA","valor":184.64},{"desc":"VIVO BRUNA","valor":75},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":482.78},{"desc":"PSICÓLOGA - BRUNA","valor":920},{"desc":"CARTÃO SANTANDER","valor":3465.65},{"desc":"IPTU","valor":149.32},{"desc":"IPVA 02/06","valor":436.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7302.24},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":5600},{"desc":"FÉRIAS - RICARDO","valor":4857.14},{"desc":"13 SALARIO - RICARDO","valor":4304.57},{"desc":"VALES MAPFRE - RICARDO","valor":480}]},"2026-04":{"gastos":[{"desc":"BANESCARD VISA","valor":6051.63},{"desc":"XP","valor":318.22},{"desc":"C6","valor":2163.92},{"desc":"NUBANK BRUNA","valor":2072.42},{"desc":"UNIMED","valor":804.64},{"desc":"CONDOMÍNIO","valor":672.92},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":563.58},{"desc":"VIVO BRUNA","valor":80},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":460.34},{"desc":"PSICÓLOGA - BRUNA","valor":1150},{"desc":"CARTÃO SANTANDER","valor":2898.74},{"desc":"ENERGIA SOLAR","valor":2250},{"desc":"IPVA 01/06","valor":436.81},{"desc":"MEDICO - BRUNA","valor":700}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7851.89},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":4800},{"desc":"KM TREINAMENTO","valor":154.28},{"desc":"SAQUE ANIVERSARIO - BRUNA","valor":2833.2}]},"2026-03":{"gastos":[{"desc":"BANESCARD VISA","valor":6195.26},{"desc":"XP","valor":318.22},{"desc":"C6","valor":2227.43},{"desc":"NUBANK BRUNA","valor":2127.83},{"desc":"UNIMED","valor":853.81},{"desc":"CONDOMÍNIO","valor":663.38},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":529.36},{"desc":"VIVO BRUNA","valor":75},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":829.98},{"desc":"CARTÃO SANTANDER","valor":1136.3},{"desc":"PSICOLOGA BRUNA","valor":920},{"desc":"ENERGIA SOLAR","valor":9428}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7484.24},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":6400},{"desc":"PLR RICARDO","valor":32690.88}]},"2026-02":{"gastos":[{"desc":"BANESCARD VISA","valor":9778.04},{"desc":"XP","valor":521.3},{"desc":"C6","valor":2823.28},{"desc":"NUBANK BRUNA","valor":1602.02},{"desc":"UNIMED","valor":804.64},{"desc":"CONDOMÍNIO","valor":637.11},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":683.96},{"desc":"VIVO BRUNA","valor":91.73},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":214.23},{"desc":"CARTÃO AMAZON","valor":837.26},{"desc":"CARTÃO SANTANDER","valor":2301.91},{"desc":"PLANO ALLCARE","valor":235}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6533.21},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":6400},{"desc":"MOARCIR 3/3","valor":432.4},{"desc":"FÉRIAS - RICARDO","valor":2040.11}]},"2026-01":{"gastos":[{"desc":"BANESCARD VISA","valor":10386.48},{"desc":"XP","valor":379.2},{"desc":"C6","valor":3084.74},{"desc":"NUBANK BRUNA","valor":2491.66},{"desc":"UNIMED","valor":1094.64},{"desc":"CONDOMÍNIO","valor":601.15},{"desc":"INTERNET + CELULAR VIVO","valor":149.84},{"desc":"ENERGIA","valor":435.64},{"desc":"VIVO BRUNA","valor":149.84},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA APTO","valor":690},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":397.04},{"desc":"CARTÃO AMAZON","valor":474.6}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7161.87},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":4800},{"desc":"ALINE","valor":873.31},{"desc":"13 SALARIO - RICARDO","valor":2875.93},{"desc":"RESTITUIÇÃO SINDICAL","valor":163.85}]},"2025-12":{"gastos":[{"desc":"BANESCARD VISA","valor":7887.95},{"desc":"XP","valor":391.42},{"desc":"C6","valor":3639.25},{"desc":"NUBANK BRUNA","valor":2949.82},{"desc":"UNIMED","valor":804.64},{"desc":"CONDOMÍNIO","valor":603.22},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":419.28},{"desc":"TIM BRUNA","valor":78.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"VIVO BRUNA","valor":75},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"PARCELA APARTAMENTO","valor":691.58},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":397.04},{"desc":"CARTÃO AMAZON","valor":639.6}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6782.17},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":7200}]},"2025-11":{"gastos":[{"desc":"BANESCARD VISA","valor":7067.36},{"desc":"XP","valor":380.24},{"desc":"C6","valor":3294.33},{"desc":"NUBANK BRUNA","valor":2866.97},{"desc":"UNIMED","valor":804.64},{"desc":"CONDOMÍNIO","valor":745.32},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":406.01},{"desc":"TIM BRUNA","valor":77.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":397.21},{"desc":"CARTÃO AMAZON","valor":351.77}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6329.59},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":8800}]},"2025-10":{"gastos":[{"desc":"BANESCARD VISA","valor":7375.38},{"desc":"XP","valor":6738.13},{"desc":"C6","valor":5328.7},{"desc":"NUBANK BRUNA","valor":1960.77},{"desc":"UNIMED","valor":790.04},{"desc":"CONDOMÍNIO","valor":597.94},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"TIM BRUNA","valor":78.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":182.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6903.68},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":4800},{"desc":"PLR RICARDO - ANTECIPACAO","valor":6232.15},{"desc":"QUILOMETRAGEM","valor":744.8}]},"2025-09":{"gastos":[{"desc":"BANESCARD VISA","valor":6217.79},{"desc":"XP","valor":908.65},{"desc":"C6","valor":3213.08},{"desc":"NUBANK BRUNA","valor":2148.75},{"desc":"UNIMED","valor":735.1},{"desc":"CONDOMÍNIO","valor":591.33},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":344.36},{"desc":"TIM BRUNA","valor":78.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"PARCELA - CARRO","valor":1656.66},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":182.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6481.53},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":5600}]},"2025-08":{"gastos":[{"desc":"BANESCARD VISA","valor":11606.37},{"desc":"XP","valor":842.25},{"desc":"C6","valor":6003.87},{"desc":"NUBANK BRUNA","valor":2723.79},{"desc":"UNIMED","valor":738.04},{"desc":"CONDOMÍNIO","valor":582.86},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":243.79},{"desc":"TIM BRUNA","valor":78.81},{"desc":"VAGA GARAGEM","valor":150},{"desc":"NUBANK RICARDO","valor":496.39},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"CARTÃO ITAÚ","valor":182.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6945.12},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":8800}]},"2025-07":{"gastos":[{"desc":"BANESCARD VISA","valor":6982.93},{"desc":"XP","valor":413.74},{"desc":"C6","valor":3459.19},{"desc":"NUBANK BRUNA","valor":1881.07},{"desc":"UNIMED","valor":1028.04},{"desc":"CONDOMÍNIO","valor":590},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":323.79},{"desc":"TIM BRUNA","valor":77.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":193.05},{"desc":"INVESTIMENTO","valor":2000},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"IPVA 4/6","valor":100.5},{"desc":"CARTÃO ITAU","valor":182.81}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":4225.39},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":4800},{"desc":"FÉRIAS - RICARDO","valor":4803.5},{"desc":"RESTITUIÇÃO IR - RICARDO","valor":2076.47}]},"2025-06":{"gastos":[{"desc":"BANESCARD VISA","valor":12467.17},{"desc":"XP","valor":68.46},{"desc":"C6","valor":7250.46},{"desc":"NUBANK BRUNA","valor":1736.72},{"desc":"UNIMED","valor":735.1},{"desc":"CONDOMÍNIO","valor":602.66},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":345.41},{"desc":"TIM BRUNA","valor":77.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":193.05},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":700},{"desc":"IPVA 3/6","valor":100.5},{"desc":"CARTÃO ITAU","valor":182.83}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6142.47},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":8000}]},"2025-05":{"gastos":[{"desc":"BANESCARD VISA","valor":8230.59},{"desc":"XP","valor":46.45},{"desc":"C6","valor":8527.06},{"desc":"NUBANK BRUNA","valor":935.65},{"desc":"UNIMED","valor":735.1},{"desc":"CONDOMÍNIO","valor":582.34},{"desc":"INTERNET + CELULAR VIVO","valor":150},{"desc":"ENERGIA","valor":383.33},{"desc":"TIM BRUNA","valor":77.89},{"desc":"VAGA GARAGEM","valor":150},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":193.05},{"desc":"INVESTIMENTO","valor":1500},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"SIMPLES - BRUNA","valor":670},{"desc":"IPVA 2/6","valor":100.5}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":5067.8},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":5600},{"desc":"13 SALARIO - RICARDO","valor":4043.22},{"desc":"FÉRIAS - RICARDO","valor":3612.89}]},"2025-04":{"gastos":[{"desc":"BANESCARD VISA","valor":6996.11},{"desc":"XP","valor":13.88},{"desc":"C6","valor":4788.27},{"desc":"NUBANK BRUNA","valor":1231.47},{"desc":"UNIMED","valor":735.1},{"desc":"CONDOMÍNIO","valor":589.3},{"desc":"INTERNET + CELULAR VIVO","valor":146.24},{"desc":"ENERGIA","valor":562.94},{"desc":"TIM BRUNA","valor":77.89},{"desc":"VAGA GARAGEM","valor":90},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":193.05},{"desc":"INVESTIMENTO","valor":2000},{"desc":"INSS - BRUNA","valor":310.64},{"desc":"CONTADOR - BRUNA","valor":430},{"desc":"COREN","valor":364.95},{"desc":"IPVA - 01/06","valor":100.5}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7137.34},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":6400},{"desc":"SAQUE ANIVERSARIO - BRUNA","valor":3190.75}]},"2025-03":{"gastos":[{"desc":"BANESCARD VISA","valor":6137.63},{"desc":"C6","valor":5185.4},{"desc":"NUBANK BRUNA","valor":865.78},{"desc":"UNIMED","valor":290},{"desc":"CONDOMÍNIO","valor":594.5},{"desc":"INTERNET","valor":109.27},{"desc":"ENERGIA","valor":640.78},{"desc":"TIM BRUNA","valor":77.89},{"desc":"TIM RICARDO","valor":57.99},{"desc":"VAGA GARAGEM","valor":90},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":193.05}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":5481.2},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":8000},{"desc":"PLR - RICARDO","valor":22700.47},{"desc":"FÉRIAS - RICARDO","valor":1939.63}]},"2025-02":{"gastos":[{"desc":"BANESCARD VISA","valor":7631.9},{"desc":"C6","valor":3212.4},{"desc":"NUBANK BRUNA","valor":2797.11},{"desc":"UNIMED","valor":1006.52},{"desc":"CONDOMÍNIO","valor":539.88},{"desc":"INTERNET","valor":109},{"desc":"ENERGIA","valor":520.45},{"desc":"TIM BRUNA","valor":77.89},{"desc":"TIM RICARDO","valor":57.99},{"desc":"VAGA GARAGEM","valor":90},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":193.05}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":6471.75},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":6400}]},"2025-01":{"gastos":[{"desc":"BANESCARD VISA","valor":6973.08},{"desc":"C6","valor":3097},{"desc":"NUBANK BRUNA","valor":1881.6},{"desc":"UNIMED","valor":954.52},{"desc":"CONDOMÍNIO","valor":541.96},{"desc":"INTERNET","valor":109},{"desc":"ENERGIA","valor":442.47},{"desc":"TIM BRUNA","valor":77.99},{"desc":"TIM RICARDO","valor":57.99},{"desc":"VAGA GARAGEM","valor":90},{"desc":"AMORTIZAÇÃO APTO","valor":500},{"desc":"NUBANK RICARDO","valor":240.13}],"receitas":[{"desc":"SALÁRIO RICARDO","valor":7134.32},{"desc":"SALÁRIO BRUNA","valor":5000},{"desc":"COMISSÃO BRUNA","valor":4800},{"desc":"13 SALARIO - RICARDO","valor":3532.28}]}};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let data = {};
+let currentMonth = '2026-08';
+let modalMode = null, editId = null, charts = {};
+let saveTimeout = null;
+
+const MN = {'01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio','06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'};
+const CATS = {'Moradia':['CONDOMÍNIO','PARCELA APTO','PARCELA APARTAMENTO','VAGA GARAGEM','AMORTIZAÇÃO APTO','INTERNET','INTERNET + CELULAR VIVO','ENERGIA','ENERGIA SOLAR'],'Transporte':['PARCELA - CARRO','PARCELA CARRO','IPVA'],'Comunicação':['VIVO BRUNA','VIVO RICARDO','TIM BRUNA','TIM RICARDO','CELULAR','NEXT BRUNA','NEXT RICARDO'],'Saúde':['UNIMED','PSICOLOGA','PSICÓLOGA','MÉDICO','PLANO ALLCARE','NUTRÓLOGO','NUTROLÓGO','COREN','CREA','MEDIATORE','PLANO SAÚDE'],'MEI / Bruna':['INSS - BRUNA','CONTADOR - BRUNA','SIMPLES - BRUNA'],'Cartões':['BANESCARD VISA','C6','NUBANK BRUNA','NUBANK RICARDO','CARTÃO ITAÚ','CARTÃO ITAU','CARTÃO AMAZON','CARTÃO SANTANDER','XP','BANESTES VISA'],'Impostos':['IPTU','IMPOSTO DE RENDA'],'Investimento':['INVESTIMENTO']};
+const CAT_CSS = {'Moradia':'cat-moradia','Transporte':'cat-transporte','Comunicação':'cat-comunicacao','Saúde':'cat-saude','MEI / Bruna':'cat-mei','Cartões':'cat-cartoes','Impostos':'cat-impostos','Investimento':'cat-investimento','Outros':'cat-outros'};
+const CCOLORS = ['#1D4ED8','#5B21B6','#065F46','#16A34A','#92400E','#9D174D','#CA8A04','#0F766E','#6B7280'];
+
+function cat(desc){const u=desc.toUpperCase();for(const[c,ks]of Object.entries(CATS))for(const k of ks)if(u.includes(k.toUpperCase()))return c;return'Outros'}
+const R=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const P=v=>(v*100).toFixed(1)+'%';
+function getM(k){if(!data[k])data[k]={gastos:[],receitas:[]};return data[k]}
+function tG(k){return(getM(k).gastos||[]).reduce((s,x)=>s+(x.valor||0),0)}
+function tR(k){return(getM(k).receitas||[]).reduce((s,x)=>s+(x.valor||0),0)}
+function sal(k){return tR(k)-tG(k)}
+function mLabel(k){const[y,m]=k.split('-');return MN[m]+'/'+y}
+function allK(){return Object.keys(data).sort((a,b)=>b.localeCompare(a))}
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+
+// ── SYNC STATUS ──────────────────────────────────────────────────────────────
+function setSyncStatus(status, text){
+  const el=document.getElementById('syncStatus');
+  const dot=document.getElementById('syncDot');
+  const txt=document.getElementById('syncText');
+  el.className='sync-status '+status;
+  txt.textContent=text;
+  dot.className='sync-dot'+(status==='saving'?' pulse':'');
+}
+
+// ── FIREBASE LOAD & SAVE ─────────────────────────────────────────────────────
+async function loadFromFirebase(){
+  setSyncStatus('saving','Carregando dados...');
+  try {
+    const docRef = doc(db,'financeiro','dados');
+    const snap = await getDoc(docRef);
+    if(snap.exists()){
+      data = snap.data().meses || {};
+      setSyncStatus('ok','Dados carregados ✓');
+    } else {
+      // Primeira vez: sobe o SEED
+      data = JSON.parse(JSON.stringify(SEED));
+      await saveToFirebase(true);
+      setSyncStatus('ok','Dados inicializados ✓');
+    }
+  } catch(e){
+    console.error(e);
+    data = JSON.parse(JSON.stringify(SEED));
+    setSyncStatus('error','Offline — usando dados locais');
+  }
+  buildMonthSelect();
+  updateAll();
+  document.getElementById('loading').classList.add('hide');
+}
+
+async function saveToFirebase(immediate=false){
+  const doSave = async () => {
+    setSyncStatus('saving','Salvando...');
+    try {
+      await setDoc(doc(db,'financeiro','dados'),{meses: data, updatedAt: new Date().toISOString()});
+      setSyncStatus('ok','Salvo ✓ '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    } catch(e){
+      console.error(e);
+      setSyncStatus('error','Erro ao salvar — verifique conexão');
+    }
+  };
+  if(immediate){
+    await doSave();
+  } else {
+    clearTimeout(saveTimeout);
+    setSyncStatus('saving','Salvando...');
+    saveTimeout = setTimeout(doSave, 800);
+  }
+}
+
+// Orçamentos também no Firebase
+async function loadBudgets(){
+  try {
+    const snap = await getDoc(doc(db,'financeiro','orcamentos'));
+    return snap.exists() ? snap.data() : {'Moradia':2800,'Transporte':1800,'Comunicação':400,'Saúde':1200,'MEI / Bruna':1050,'Cartões':8000,'Impostos':200,'Investimento':2000,'Outros':1500};
+  } catch(e){ return {}; }
+}
+async function saveBudgetsFirebase(budgets){
+  try { await setDoc(doc(db,'financeiro','orcamentos'),budgets); } catch(e){}
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────────────────────
+function buildMonthSelect(){
+  const s=document.getElementById('monthSelect');
+  const prev=s.value||currentMonth;
+  s.innerHTML='';
+  allK().forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=mLabel(k);if(k===prev)o.selected=true;s.appendChild(o)});
+  const addOpt=document.createElement('option');
+  addOpt.value='__new__';addOpt.textContent='+ Criar novo mês';
+  s.appendChild(addOpt);
+  if(!s.value||s.value==='__new__'){s.value=prev}
+}
+function changeMonth(k){if(k==='__new__'){openModal('newmonth');document.getElementById('monthSelect').value=currentMonth;return}currentMonth=k;updateAll()}
+
+function updateThermometer(){
+  const s=sal(currentMonth),r=tR(currentMonth),ratio=r>0?Math.max(0,Math.min(1,(s/r)*2+0.5)):0.5,pct=Math.round(ratio*100);
+  document.getElementById('thermoFill').style.width=pct+'%';
+  document.getElementById('thermoFill').style.backgroundPosition=(100-pct)+'% 0';
+  document.getElementById('thermoVal').textContent=R(s);
+  document.getElementById('thermoVal').style.color=s>=0?'#4ade80':'#f87171';
+  document.getElementById('thermoSub').textContent=s>=0?'✓ saldo positivo':'⚠ déficit no mês';
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function updateDashboard(){
+  const[y,m]=currentMonth.split('-');
+  document.getElementById('dash-title').textContent='Dashboard — '+MN[m]+' '+y;
+  const rec=tR(currentMonth),gas=tG(currentMonth),s=rec-gas,p=rec>0?s/rec:0;
+  document.getElementById('kpi-rec').textContent=R(rec);
+  document.getElementById('kpi-gas').textContent=R(gas);
+  const ks=document.getElementById('kpi-sal');ks.textContent=R(s);ks.className='kpi-value '+(s>=0?'pos':'neg');
+  const kp=document.getElementById('kpi-poupa');kp.textContent=P(p);kp.className='kpi-value '+(p>=0?'pos':'neg');
+  const k12=allK().slice(0,12);
+  if(k12.length){
+    document.getElementById('kpi-rec-sub').textContent='Média 12m: '+R(k12.reduce((s,k)=>s+tR(k),0)/k12.length);
+    document.getElementById('kpi-gas-sub').textContent='Média 12m: '+R(k12.reduce((s,k)=>s+tG(k),0)/k12.length);
+  }
+  document.getElementById('kpi-sal-sub').textContent=p>=0.2?'🎯 Meta 20% atingida!':'🎯 Meta: 20% da renda';
+  document.getElementById('kpi-inv-sub').textContent='Meta: investir 20% da renda';
+  buildCharts();
+}
+
+function buildCharts(){
+  dc('chartPie');const ct={};(getM(currentMonth).gastos||[]).forEach(g=>{const c=cat(g.desc);ct[c]=(ct[c]||0)+g.valor});
+  if(Object.keys(ct).length){
+    charts.chartPie=new Chart(document.getElementById('chartPie'),{type:'doughnut',data:{labels:Object.keys(ct),datasets:[{data:Object.values(ct),backgroundColor:CCOLORS.slice(0,Object.keys(ct).length),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:11,padding:7}}}}});
+  }
+  dc('chartLine');const k12=allK().slice(0,12).reverse();
+  if(k12.length){
+    charts.chartLine=new Chart(document.getElementById('chartLine'),{type:'line',data:{labels:k12.map(k=>{const[y,m]=k.split('-');return MN[m].substring(0,3)+'/'+y.substring(2)}),datasets:[{label:'Receita',data:k12.map(k=>tR(k)),borderColor:'#16A34A',backgroundColor:'rgba(22,163,74,.08)',tension:.35,fill:true,pointRadius:3},{label:'Gasto',data:k12.map(k=>tG(k)),borderColor:'#DC2626',backgroundColor:'rgba(220,38,38,.06)',tension:.35,fill:true,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR',{notation:'compact'})},grid:{color:'#f3f4f6'}},x:{grid:{display:false}}}}});
+  }
+  dc('chartBar');const k6=allK().slice(0,6).reverse();
+  if(k6.length){
+    charts.chartBar=new Chart(document.getElementById('chartBar'),{type:'bar',data:{labels:k6.map(k=>{const[y,m]=k.split('-');return MN[m].substring(0,3)}),datasets:Object.keys(CATS).map((c,i)=>({label:c,data:k6.map(k=>(getM(k).gastos||[]).filter(g=>cat(g.desc)===c).reduce((s,g)=>s+g.valor,0)),backgroundColor:CCOLORS[i]+'cc',borderRadius:2}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:9},boxWidth:9}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#f3f4f6'},ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR',{notation:'compact'})}}}}});
+  }
+}
+
+// ── MÊS ATUAL ─────────────────────────────────────────────────────────────────
+function updateMensal(){
+  const[y,m]=currentMonth.split('-');document.getElementById('mensal-title').textContent=MN[m]+' / '+y;
+  const rec=tR(currentMonth),gas=tG(currentMonth),s=rec-gas,p=rec>0?Math.max(0,s/rec):0;
+  document.getElementById('mensal-summary').innerHTML=`<div class="sumbar-item"><div class="sumbar-label">Receitas</div><div class="sumbar-val" style="color:#16A34A">${R(rec)}</div><div class="progress-bar"><div class="progress-fill" style="width:100%;background:#16A34A"></div></div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Gastos</div><div class="sumbar-val" style="color:#DC2626">${R(gas)}</div><div class="progress-bar"><div class="progress-fill" style="width:${rec>0?Math.min(100,gas/rec*100):0}%;background:#DC2626"></div></div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Saldo</div><div class="sumbar-val" style="color:${s>=0?'#16A34A':'#DC2626'}">${R(s)}</div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Poupança</div><div class="sumbar-val" style="color:${p>=0.2?'#16A34A':'#C9A84C'}">${P(p)}</div><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,p*100)}%;background:${p>=0.2?'#16A34A':'#C9A84C'}"></div></div></div>`;
+  const gs=getM(currentMonth).gastos||[];
+  document.getElementById('gastos-count').textContent=gs.length+' lançamentos — '+R(gas);
+  document.getElementById('tbl-gastos').innerHTML=gs.length?gs.map((g,i)=>`<tr><td><strong>${g.desc}</strong></td><td><span class="tag ${CAT_CSS[cat(g.desc)]||'cat-outros'}">${cat(g.desc)}</span></td><td class="text-right amt neg">${R(g.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('gasto',${i})">✏️</button><button class="btn-del" onclick="deleteItem('gasto',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Nenhum gasto. Clique em "+ Novo".</td></tr>';
+  const rs=getM(currentMonth).receitas||[];
+  document.getElementById('receitas-count').textContent=rs.length+' lançamentos — '+R(rec);
+  document.getElementById('tbl-receitas').innerHTML=rs.length?rs.map((r,i)=>`<tr><td><strong>${r.desc}</strong></td><td class="text-right amt pos">${R(r.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('receita',${i})">✏️</button><button class="btn-del" onclick="deleteItem('receita',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nenhuma receita lançada.</td></tr>';
+}
+
+// ── RESUMO ANUAL ──────────────────────────────────────────────────────────────
+function updateAnual(){
+  const years=[...new Set(allK().map(k=>k.split('-')[0]))].sort((a,b)=>b-a);
+  document.getElementById('anual-content').innerHTML=years.map(y=>{
+    const mK=allK().filter(k=>k.split('-')[0]===y).sort();
+    let tR2=0,tG2=0,rows='';
+    mK.forEach(k=>{const r=tR(k),g=tG(k),s=r-g;tR2+=r;tG2+=g;const[,m]=k.split('-');rows+=`<tr><td><strong>${MN[m]}</strong></td><td class="text-right amt pos">${R(r)}</td><td class="text-right amt neg">${R(g)}</td><td class="text-right ${s>=0?'saldo-pos':'saldo-neg'}">${R(s)}</td><td class="text-right">${r>0?P(g/r):'—'}</td><td class="text-right">${r>0?P(Math.max(0,(r-g)/r)):'—'}</td></tr>`});
+    const sT=tR2-tG2;
+    return`<div class="year-section"><div class="year-title">${y}</div><div class="table-wrap" style="border-radius:0 0 12px 12px"><table><thead><tr><th>Mês</th><th class="text-right">Receita</th><th class="text-right">Gasto</th><th class="text-right">Saldo</th><th class="text-right">% Gasto</th><th class="text-right">Poupança</th></tr></thead><tbody>${rows}</tbody><tfoot><tr style="background:#f8f9ff"><td class="bold">TOTAL ${y}</td><td class="text-right amt pos bold">${R(tR2)}</td><td class="text-right amt neg bold">${R(tG2)}</td><td class="text-right bold ${sT>=0?'saldo-pos':'saldo-neg'}">${R(sT)}</td><td class="text-right bold">${tR2>0?P(tG2/tR2):'—'}</td><td class="text-right bold">${tR2>0?P(Math.max(0,sT/tR2)):'—'}</td></tr></tfoot></table></div></div>`}).join('');
+}
+
+// ── CATEGORIAS ────────────────────────────────────────────────────────────────
+async function updateCategorias(){
+  const[y,m]=currentMonth.split('-');
+  document.getElementById('cat-sub').textContent='Distribuição — '+MN[m]+'/'+y;
+  document.getElementById('cat-chart-month').textContent=MN[m]+'/'+y;
+  const gs=getM(currentMonth).gastos||[],tot=gs.reduce((s,g)=>s+g.valor,0),ct={};
+  gs.forEach(g=>{const c=cat(g.desc);ct[c]=(ct[c]||0)+g.valor});
+  dc('chartCatBar');const sorted=Object.entries(ct).sort((a,b)=>b[1]-a[1]);
+  if(sorted.length){
+    charts.chartCatBar=new Chart(document.getElementById('chartCatBar'),{type:'bar',data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:CCOLORS.slice(0,sorted.length),borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR',{notation:'compact'})}}}}});
+  }
+  const budgets=await loadBudgets();
+  document.getElementById('cat-cards').innerHTML=[...Object.keys(CATS),'Outros'].map(c=>{const real=ct[c]||0;if(!real&&!budgets[c])return'';const pR=tot>0?(real/tot*100).toFixed(1):0,budget=budgets[c]||0,pB=budget>0?Math.min(100,real/budget*100):0,ov=budget>0&&real>budget;return`<div class="meta-card"><div class="meta-cat">${c}</div><div class="meta-vals"><span style="color:var(--cinza-m)">${pR}% do total</span><span class="amt neg">${real>0?R(real):'—'}</span></div>${budget>0?`<div class="meta-vals" style="font-size:.72rem;margin-top:3px"><span style="color:${ov?'#DC2626':'var(--cinza-m)'}">Orç: ${R(budget)}</span><span style="color:${ov?'#DC2626':'#16A34A'}">${ov?'🔴 Estouro':'✅ Ok'}</span></div><div class="meta-bar"><div class="meta-fill" style="width:${pB}%;background:${ov?'#DC2626':'#16A34A'}"></div></div>`:''}</div>`}).join('');
+}
+
+// ── METAS ─────────────────────────────────────────────────────────────────────
+async function updateMetas(){
+  const budgets=await loadBudgets();
+  const gs=getM(currentMonth).gastos||[],catR={};
+  gs.forEach(g=>{const c=cat(g.desc);catR[c]=(catR[c]||0)+g.valor});
+  document.getElementById('metas-list').innerHTML=Object.entries(budgets).map(([c,b])=>{const real=catR[c]||0,pct=b>0?Math.min(100,real/b*100):0,ov=real>b;return`<div class="meta-card" style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="meta-cat">${c}</div><div style="margin-top:3px"><span style="font-size:.85rem;font-weight:600;color:${ov?'#DC2626':'var(--cinza)'}">${R(real)}</span><span style="color:var(--cinza-m);font-size:.78rem;margin-left:5px">/ ${R(b)}</span></div></div><div style="text-align:right"><span style="font-size:.72rem;background:${ov?'#FEE2E2':'#D1FAE5'};color:${ov?'#B91C1C':'#065F46'};padding:3px 7px;border-radius:20px;font-weight:600">${ov?'🔴 +'+R(real-b):'✅ -'+R(b-real)}</span></div></div><div class="meta-bar" style="margin-top:8px"><div class="meta-fill" style="width:${pct}%;background:${ov?'#DC2626':pct>80?'#CA8A04':'#16A34A'}"></div></div></div>`}).join('');
+  dc('chartPoupanca');const k12=allK().slice(0,12).reverse();
+  if(k12.length){
+    charts.chartPoupanca=new Chart(document.getElementById('chartPoupanca'),{type:'line',data:{labels:k12.map(k=>{const[y,m]=k.split('-');return MN[m].substring(0,3)+'/'+y.substring(2)}),datasets:[{label:'Poupança %',data:k12.map(k=>{const r=tR(k);return r>0?Math.max(-100,(r-tG(k))/r*100):0}),borderColor:'#C9A84C',backgroundColor:'rgba(201,168,76,.1)',tension:.4,fill:true,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v.toFixed(0)+'%'},grid:{color:'#f3f4f6'}},x:{grid:{display:false}}}}});
+    dc('chartInv');
+    charts.chartInv=new Chart(document.getElementById('chartInv'),{type:'bar',data:{labels:k12.map(k=>{const[y,m]=k.split('-');return MN[m].substring(0,3)}),datasets:[{label:'Investimento',data:k12.map(k=>(getM(k).gastos||[]).filter(g=>cat(g.desc)==='Investimento').reduce((s,g)=>s+g.valor,0)),backgroundColor:'#0F766E',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR',{notation:'compact'})}}}}});
+  }
+}
+
+// ── INVESTIMENTOS ─────────────────────────────────────────────────────────────
+function calcProjecao(){
+  const pat0=parseFloat(document.getElementById('inv-patrimonio').value)||0,aporte=parseFloat(document.getElementById('inv-aporte').value)||0,retorno=parseFloat(document.getElementById('inv-retorno').value)||0,meta=parseFloat(document.getElementById('inv-meta').value)||200000,anos=parseInt(document.getElementById('inv-anos').value)||10;
+  let pat=pat0,rows='',labels=['Hoje'],vals=[pat0];
+  for(let yr=1;yr<=anos;yr++){const a=aporte*12,rend=(pat+a)*(retorno/100),pF=pat+a+rend,ok=pF>=meta;rows+=`<tr><td class="bold">Ano ${yr}</td><td class="text-right">${R(pat)}</td><td class="text-right" style="color:#0F766E">${R(a)}</td><td class="text-right" style="color:#16A34A">${R(rend)}</td><td class="text-right bold ${ok?'saldo-pos':''}">${R(pF)}</td></tr>`;labels.push('Ano '+yr);vals.push(Math.round(pF));pat=pF}
+  document.getElementById('tbl-projecao').innerHTML=rows;
+  dc('chartProjecao');
+  charts.chartProjecao=new Chart(document.getElementById('chartProjecao'),{type:'line',data:{labels,datasets:[{label:'Patrimônio',data:vals,borderColor:'#0A3D2E',backgroundColor:'rgba(10,61,46,.08)',fill:true,tension:.4,pointRadius:3},{label:'Meta',data:labels.map(()=>meta),borderColor:'#C9A84C',borderDash:[6,4],pointRadius:0,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR',{notation:'compact'})},grid:{color:'#f3f4f6'}},x:{grid:{display:false}}}}});
+  document.getElementById('estrategias-list').innerHTML=[{i:'🎯',t:'Regra 50/30/20',d:'50% necessidades • 30% desejos • 20% investimentos. Gasto atual: '+P(tG(currentMonth)/Math.max(1,tR(currentMonth)))+' da renda.'},{i:'🤖',t:'Investimento Automático',d:'Débito automático no dia do salário. Meta: '+R(aporte)+'/mês.'},{i:'📉',t:'Revisar Cartões',d:'Cartões são o maior gasto. Crie limite por cartão e revise a fatura semanalmente.'},{i:'🏦',t:'Fundo de Emergência',d:'Meta: 6 meses de gastos fixos (~'+R(tG(currentMonth)*6)+') em Tesouro Selic ou CDB.'},{i:'🏠',t:'Amortização Antecipada',d:'Use saldos positivos para amortizar o apartamento e reduzir juros totais.'},{i:'📊',t:'Diversificação',d:'Renda Fixa (50%) + Fundos (30%) + Ações/FII (20%). Revise trimestralmente.'},{i:'💼',t:'MEI da Bruna',d:'Mantenha contas PJ e PF separadas. Reinvista parte do lucro empresarial.'}].map(e=>`<div style="background:#fff;border-radius:9px;padding:11px 13px;margin-bottom:8px;border:1px solid #e5e7eb;display:flex;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)"><span style="font-size:1.1rem;flex-shrink:0">${e.i}</span><div><strong style="font-size:.83rem;color:var(--verde)">${e.t}</strong><p style="font-size:.77rem;color:var(--cinza-m);margin-top:2px;line-height:1.5">${e.d}</p></div></div>`).join('');
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────────────────
+function openModal(mode,prefill){
+  modalMode=mode;editId=prefill?prefill.id:null;
+  const body=document.getElementById('modal-body'),footer=document.getElementById('modal-footer'),title=document.getElementById('modal-title');
+  const monthOpts=allK().map(k=>`<option value="${k}"${k===currentMonth?' selected':''}>${mLabel(k)}</option>`).join('')+'<option value="__new__">+ Criar novo mês</option>';
+  if(mode==='gasto'){
+    title.innerHTML='💸 '+(editId!==null?'Editar Gasto':'Novo Gasto');
+    body.innerHTML=`<div class="modal-row"><label>Descrição</label><input type="text" id="m-desc" placeholder="Ex: SUPERMERCADO" value="${prefill?prefill.desc:''}" list="dl" autocomplete="off"><datalist id="dl">${(getM(currentMonth).gastos||[]).map(g=>`<option value="${g.desc}">`).join('')}</datalist></div><div class="modal-two"><div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01" value="${prefill?prefill.valor:''}"></div><div class="modal-row"><label>Categoria</label><select id="m-cat">${[...Object.keys(CATS),'Outros'].map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div></div><div class="modal-two"><div class="modal-row"><label>Mês</label><select id="m-month">${monthOpts}</select></div><div class="modal-row"><label>Recorrente?</label><select id="m-rec"><option value="0">Não</option><option value="3">Sim — próx. 3 meses</option></select></div></div>`;
+    footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>${editId!==null?'<button class="btn btn-secondary" onclick="deleteItemFromModal()">🗑 Excluir</button>':''}<button class="btn btn-danger" onclick="saveItem()">Salvar Gasto</button>`;
+  } else if(mode==='receita'){
+    title.innerHTML='💰 '+(editId!==null?'Editar Receita':'Nova Receita');
+    body.innerHTML=`<div class="modal-row"><label>Descrição</label><input type="text" id="m-desc" placeholder="Ex: SALÁRIO RICARDO" value="${prefill?prefill.desc:''}"></div><div class="modal-two"><div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01" value="${prefill?prefill.valor:''}"></div><div class="modal-row"><label>Mês</label><select id="m-month">${monthOpts}</select></div></div>`;
+    footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>${editId!==null?'<button class="btn btn-secondary" onclick="deleteItemFromModal()">🗑 Excluir</button>':''}<button class="btn btn-primary" onclick="saveItem()">Salvar Receita</button>`;
+  } else if(mode==='investimento'){
+    title.innerHTML='📈 Novo Investimento';
+    body.innerHTML=`<div class="modal-row"><label>Descrição</label><input type="text" id="m-desc" value="INVESTIMENTO"></div><div class="modal-two"><div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01"></div><div class="modal-row"><label>Tipo</label><select id="m-tipo"><option>Tesouro Direto</option><option>CDB</option><option>Fundo</option><option>Ações</option><option>FII</option><option>Poupança</option><option>Outros</option></select></div></div><div class="modal-row"><label>Mês</label><select id="m-month">${allK().map(k=>`<option value="${k}"${k===currentMonth?' selected':''}>${mLabel(k)}</option>`).join('')}</select></div>`;
+    footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveItem()">Registrar</button>`;
+  } else if(mode==='meta'){
+    title.innerHTML='🎯 Orçamento por Categoria';
+    loadBudgets().then(budgets=>{
+      body.innerHTML=`<p style="color:var(--cinza-m);font-size:.82rem;margin-bottom:12px">Defina o orçamento mensal por categoria. As barras ficam verdes/vermelhas automaticamente.</p>`+[...Object.keys(CATS),'Outros'].map(c=>`<div class="modal-two" style="margin-bottom:7px"><div class="modal-row" style="margin:0"><label style="color:var(--cinza);font-weight:600;font-size:.83rem;padding-top:7px;display:block">${c}</label></div><div class="modal-row" style="margin:0"><input type="number" id="bgt-${c.replace(/[^a-z]/gi,'_')}" value="${budgets[c]||0}" placeholder="R$"></div></div>`).join('');
+      footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveBudgets()">Salvar Metas</button>`;
+    });
+    body.innerHTML='<div style="padding:20px;text-align:center;color:var(--cinza-m)">Carregando...</div>';
+    footer.innerHTML='';
+  } else if(mode==='newmonth'){
+    title.innerHTML='📅 Novo Mês';
+    body.innerHTML=`<div class="modal-two"><div class="modal-row"><label>Ano</label><input type="number" id="m-ano" value="2026" min="2020" max="2030"></div><div class="modal-row"><label>Mês</label><select id="m-mes">${Object.entries(MN).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div></div><div class="modal-row" style="background:var(--ouro-l);padding:10px;border-radius:8px;font-size:.82rem;color:#92400E">💡 Novo mês criado vazio. Você pode copiar os gastos fixos do mês anterior automaticamente.</div><div class="modal-row"><label><input type="checkbox" id="m-dup" style="margin-right:5px"> Copiar gastos fixos recorrentes do mês anterior</label></div>`;
+    footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="createNewMonth()">Criar Mês</button>`;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>{const f=document.querySelector('#modal-body input');if(f)f.focus()},100);
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editId=null}
+function closeModalOutside(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
+
+async function saveItem(){
+  const desc=(document.getElementById('m-desc')?.value||'').trim().toUpperCase();
+  const valor=parseFloat(document.getElementById('m-valor')?.value)||0;
+  const ms=document.getElementById('m-month')?.value||currentMonth;
+  if(!desc){showToast('⚠️ Preencha a descrição',true);return}
+  if(valor<=0){showToast('⚠️ Valor inválido',true);return}
+  if(ms==='__new__'){openModal('newmonth');return}
+  if(!data[ms])data[ms]={gastos:[],receitas:[]};
+  const recorrente=parseInt(document.getElementById('m-rec')?.value||'0');
+  const item={desc,valor};
+  const tipo=(modalMode==='gasto'||modalMode==='investimento')?'gastos':'receitas';
+  // Salva no mês selecionado
+  if(editId!==null) data[ms][tipo][editId]=item;
+  else data[ms][tipo].push(item);
+  // Se recorrente, adiciona nos próximos meses
+  if(recorrente>0 && editId===null){
+    const [ry,rm]=ms.split('-').map(Number);
+    for(let i=1;i<recorrente;i++){
+      let nm=rm+i,ny=ry;
+      if(nm>12){nm-=12;ny++}
+      const nk=ny+'-'+(String(nm).padStart(2,'0'));
+      if(!data[nk])data[nk]={gastos:[],receitas:[]};
+      if(!data[nk][tipo])data[nk][tipo]=[];
+      data[nk][tipo].push({...item});
+    }
+  }
+  closeModal();
+  currentMonth=ms;
+  await saveToFirebase();
+  buildMonthSelect();
+  updateAll();
+  showToast(tipo==='gastos'?'✅ Gasto salvo':'✅ Receita salva');
+}
+
+function editItem(type,idx){const m=getM(currentMonth),item=type==='gasto'?m.gastos[idx]:m.receitas[idx];openModal(type,{...item,id:idx})}
+
+async function deleteItem(type,idx){
+  if(!confirm('Excluir este lançamento?'))return;
+  const m=getM(currentMonth);
+  if(type==='gasto')m.gastos.splice(idx,1);
+  else m.receitas.splice(idx,1);
+  await saveToFirebase();
+  updateAll();
+  showToast('🗑 Removido');
+}
+
+async function deleteItemFromModal(){
+  if(!confirm('Excluir?'))return;
+  const m=getM(currentMonth);
+  if(modalMode==='gasto')m.gastos.splice(editId,1);
+  else m.receitas.splice(editId,1);
+  closeModal();
+  await saveToFirebase();
+  updateAll();
+  showToast('🗑 Removido');
+}
+
+async function saveBudgets(){
+  const cats=[...Object.keys(CATS),'Outros'],budgets={};
+  cats.forEach(c=>{const el=document.getElementById('bgt-'+c.replace(/[^a-z]/gi,'_'));if(el)budgets[c]=parseFloat(el.value)||0});
+  await saveBudgetsFirebase(budgets);
+  closeModal();
+  updateMetas();
+  updateCategorias();
+  showToast('✅ Metas salvas no Firebase');
+}
+
+async function createNewMonth(){
+  const ano=document.getElementById('m-ano').value,mes=document.getElementById('m-mes').value;
+  const dup=document.getElementById('m-dup').checked,key=ano+'-'+mes;
+  if(data[key]){showToast('⚠️ Mês já existe',true);return}
+  data[key]={gastos:[],receitas:[]};
+  if(dup){
+    const prev=allK().find(k=>k<key);
+    if(prev){
+      data[key].gastos=(data[prev].gastos||[]).filter(g=>['Moradia','Transporte','Comunicação','Saúde','MEI / Bruna'].includes(cat(g.desc))).map(g=>({...g}));
+    }
+  }
+  closeModal();
+  await saveToFirebase();
+  currentMonth=key;
+  buildMonthSelect();
+  updateAll();
+  showToast('✅ Mês '+mLabel(key)+' criado e salvo');
+}
+
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────────────────────
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+  if(name==='dashboard')updateDashboard();
+  else if(name==='mensal')updateMensal();
+  else if(name==='anual')updateAnual();
+  else if(name==='categorias')updateCategorias();
+  else if(name==='metas')updateMetas();
+  else if(name==='investimentos')calcProjecao();
+}
+
+function showToast(msg,err){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.style.background=err?'#B91C1C':'#1C1C1E';
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+function updateAll(){
+  updateThermometer();
+  const a=document.querySelector('.page.active');if(!a)return;
+  const id=a.id.replace('page-','');
+  if(id==='dashboard')updateDashboard();
+  else if(id==='mensal')updateMensal();
+  else if(id==='anual')updateAnual();
+  else if(id==='categorias')updateCategorias();
+  else if(id==='metas')updateMetas();
+  else if(id==='investimentos')calcProjecao();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  if(e.ctrlKey&&e.key==='g'){e.preventDefault();openModal('gasto')}
+  if(e.ctrlKey&&e.key==='r'){e.preventDefault();openModal('receita')}
+  if(e.ctrlKey&&e.key==='i'){e.preventDefault();openModal('investimento')}
+});
+
+// Expõe funções para o HTML (onclick)
+window.showPage=showPage;window.changeMonth=changeMonth;window.openModal=openModal;
+window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
+window.saveItem=saveItem;window.editItem=editItem;window.deleteItem=deleteItem;
+window.deleteItemFromModal=deleteItemFromModal;window.saveBudgets=saveBudgets;
+window.createNewMonth=createNewMonth;window.calcProjecao=calcProjecao;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadFromFirebase();
+</script>
+</body>
+</html>
