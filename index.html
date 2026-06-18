@@ -219,7 +219,9 @@ tr:hover td{background:#fafafa}
     margin-left:0;padding:14px 12px 90px;
     padding-top:14px;
     max-width:100vw;
+    overflow-x:hidden;
   }
+  body{overflow-x:hidden}
 
   .page-title{font-size:1.35rem}
   .page-sub{font-size:.78rem;margin-bottom:16px}
@@ -248,12 +250,10 @@ tr:hover td{background:#fafafa}
   /* Metas grid: 1 coluna no celular */
   .meta-grid{grid-template-columns:1fr;gap:10px}
 
-  /* Tabelas: scroll horizontal suave, fonte menor, touch-friendly */
-  .table-wrap{margin-bottom:14px;border-radius:10px}
-  .table-wrap table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
-  .table-wrap thead,.table-wrap tbody{display:block}
-  /* Mantemos table como scroll-x simples (mais previsível que reflow em linha) */
-  table{min-width:480px}
+  /* Tabelas: scroll horizontal no CONTAINER, mantendo a table intacta
+     (display:block em table/thead/tbody quebra o alinhamento de colunas — corrigido) */
+  .table-wrap{margin-bottom:14px;border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table-wrap table{min-width:460px;white-space:nowrap}
   th{padding:8px 10px;font-size:.66rem}
   td{padding:9px 10px;font-size:.8rem}
   .btn-edit,.btn-del{padding:6px;font-size:1rem}
@@ -325,8 +325,22 @@ tr:hover td{background:#fafafa}
 </head>
 <body>
 
+<!-- Tela de Senha (gate de acesso) -->
+<div id="passwordGate" style="position:fixed;inset:0;background:var(--verde);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;padding:24px">
+  <div style="font-family:'DM Serif Display',serif;color:var(--ouro);font-size:1.8rem;margin-bottom:6px">Finanças Familiar</div>
+  <div style="color:rgba(255,255,255,.5);font-size:.85rem;margin-bottom:28px">Ricardo & Bruna</div>
+  <div style="background:rgba(255,255,255,.06);border-radius:14px;padding:24px;width:100%;max-width:320px">
+    <label style="display:block;color:rgba(255,255,255,.7);font-size:.8rem;margin-bottom:10px;text-align:center">Digite o código de acesso</label>
+    <input type="password" inputmode="numeric" maxlength="4" id="gateInput" placeholder="••••"
+      style="width:100%;text-align:center;font-size:1.6rem;letter-spacing:0.4em;padding:12px;border-radius:10px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:'JetBrains Mono',monospace">
+    <button onclick="checkGatePassword()" style="width:100%;margin-top:14px;padding:12px;border-radius:10px;border:none;background:var(--ouro);color:var(--verde);font-weight:700;font-size:.9rem;cursor:pointer">Entrar</button>
+    <div id="gateError" style="color:#f87171;font-size:.78rem;text-align:center;margin-top:10px;min-height:18px"></div>
+  </div>
+  <div style="color:rgba(255,255,255,.35);font-size:.72rem;margin-top:20px;text-align:center;max-width:280px">Esse código foi combinado entre você e a outra pessoa que usa este app</div>
+</div>
+
 <!-- Loading Screen -->
-<div class="loading-screen" id="loading">
+<div class="loading-screen" id="loading" style="display:none">
   <div class="loading-logo">Finanças Familiar</div>
   <div class="loading-sub">Ricardo & Bruna</div>
   <div class="loading-bar"><div class="loading-fill"></div></div>
@@ -472,6 +486,9 @@ tr:hover td{background:#fafafa}
       <div class="form-group"><label>Meta Patrimônio (R$)</label><input type="number" id="inv-meta" value="200000" oninput="calcProjecao()"></div>
       <div class="form-group"><label>Horizonte (anos)</label><input type="number" id="inv-anos" value="10" min="1" max="30" oninput="calcProjecao()"></div>
       <div class="form-group"><label>Inflação Anual (%)</label><input type="number" id="inv-inflacao" value="5.5" step="0.1" oninput="calcProjecao()"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px">
+      <button class="btn btn-primary" onclick="saveInvestParams()" id="btn-save-invest">💾 Salvar Parâmetros</button>
     </div>
   </div>
   <div class="chart-card"><div class="chart-title">Projeção de Crescimento Patrimonial</div><div class="chart-wrap" style="height:240px"><canvas id="chartProjecao"></canvas></div></div>
@@ -648,6 +665,36 @@ async function saveBudgetsFirebase(budgets){
   try { await setDoc(doc(db,'financeiro','orcamentos'),budgets); } catch(e){}
 }
 
+// Parâmetros de investimento também no Firebase
+const DEFAULT_INVEST_PARAMS = {patrimonio:45000, aporte:2000, retorno:12, meta:200000, anos:10, inflacao:5.5};
+async function loadInvestParams(){
+  try {
+    const snap = await getDoc(doc(db,'financeiro','investimento_params'));
+    return snap.exists() ? {...DEFAULT_INVEST_PARAMS, ...snap.data()} : DEFAULT_INVEST_PARAMS;
+  } catch(e){ return DEFAULT_INVEST_PARAMS; }
+}
+async function saveInvestParams(){
+  const params = {
+    patrimonio: parseFloat(document.getElementById('inv-patrimonio').value)||0,
+    aporte: parseFloat(document.getElementById('inv-aporte').value)||0,
+    retorno: parseFloat(document.getElementById('inv-retorno').value)||0,
+    meta: parseFloat(document.getElementById('inv-meta').value)||200000,
+    anos: parseInt(document.getElementById('inv-anos').value)||10,
+    inflacao: parseFloat(document.getElementById('inv-inflacao').value)||5.5
+  };
+  const btn = document.getElementById('btn-save-invest');
+  const original = btn.textContent;
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+  try {
+    await setDoc(doc(db,'financeiro','investimento_params'), {...params, updatedBy: currentUser||'Desconhecido', updatedAt: new Date().toISOString()});
+    showToast('✅ Parâmetros salvos — todos verão esses valores');
+  } catch(e){
+    console.error(e);
+    showToast('⚠️ Erro ao salvar parâmetros', true);
+  }
+  btn.textContent = original; btn.disabled = false;
+}
+
 // ── UI HELPERS ────────────────────────────────────────────────────────────────
 function buildMonthSelect(){
   const s=document.getElementById('monthSelect');
@@ -758,6 +805,21 @@ async function updateMetas(){
 }
 
 // ── INVESTIMENTOS ─────────────────────────────────────────────────────────────
+let investParamsLoaded = false;
+async function openInvestPage(){
+  if(!investParamsLoaded){
+    const p = await loadInvestParams();
+    document.getElementById('inv-patrimonio').value = p.patrimonio;
+    document.getElementById('inv-aporte').value = p.aporte;
+    document.getElementById('inv-retorno').value = p.retorno;
+    document.getElementById('inv-meta').value = p.meta;
+    document.getElementById('inv-anos').value = p.anos;
+    document.getElementById('inv-inflacao').value = p.inflacao;
+    investParamsLoaded = true;
+  }
+  calcProjecao();
+}
+
 function calcProjecao(){
   const pat0=parseFloat(document.getElementById('inv-patrimonio').value)||0,aporte=parseFloat(document.getElementById('inv-aporte').value)||0,retorno=parseFloat(document.getElementById('inv-retorno').value)||0,meta=parseFloat(document.getElementById('inv-meta').value)||200000,anos=parseInt(document.getElementById('inv-anos').value)||10;
   let pat=pat0,rows='',labels=['Hoje'],vals=[pat0];
@@ -902,7 +964,7 @@ function showPage(name,el){
   else if(name==='anual')updateAnual();
   else if(name==='categorias')updateCategorias();
   else if(name==='metas')updateMetas();
-  else if(name==='investimentos')calcProjecao();
+  else if(name==='investimentos')openInvestPage();
 }
 
 function showToast(msg,err){
@@ -920,7 +982,7 @@ function updateAll(){
   else if(id==='anual')updateAnual();
   else if(id==='categorias')updateCategorias();
   else if(id==='metas')updateMetas();
-  else if(id==='investimentos')calcProjecao();
+  else if(id==='investimentos')openInvestPage();
 }
 
 document.addEventListener('keydown',e=>{
@@ -935,7 +997,7 @@ window.showPage=showPage;window.changeMonth=changeMonth;window.openModal=openMod
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 window.saveItem=saveItem;window.editItem=editItem;window.deleteItem=deleteItem;
 window.deleteItemFromModal=deleteItemFromModal;window.saveBudgets=saveBudgets;
-window.createNewMonth=createNewMonth;window.calcProjecao=calcProjecao;
+window.createNewMonth=createNewMonth;window.calcProjecao=calcProjecao;window.saveInvestParams=saveInvestParams;window.openInvestPage=openInvestPage;
 window.changeUser=changeUser;
 
 // ── LISTENER EM TEMPO REAL ──────────────────────────────────────────────────
@@ -958,7 +1020,71 @@ function startRealtimeSync(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-loadFromFirebase().then(()=>startRealtimeSync());
+// ── PASSWORD GATE ────────────────────────────────────────────────────────────
+// O código combinado fica como HASH no Firestore (não em texto puro), e este
+// dispositivo só guarda "já autenticado = true" depois de validar corretamente.
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function ensureGateHashExists(){
+  // Na primeira execução de todas (banco vazio), grava o hash do código combinado.
+  // Depois disso, ninguém mais sobrescreve — só serve para inicializar.
+  try {
+    const ref = doc(db,'financeiro','acesso');
+    const snap = await getDoc(ref);
+    if(!snap.exists()){
+      const hash = await sha256('1812');
+      await setDoc(ref, {codeHash: hash});
+    }
+  } catch(e){ console.error('Erro ao inicializar gate:', e); }
+}
+
+async function checkGatePassword(){
+  const input = document.getElementById('gateInput').value.trim();
+  const errEl = document.getElementById('gateError');
+  if(input.length !== 4){ errEl.textContent = 'Digite os 4 dígitos do código'; return; }
+  errEl.textContent = 'Verificando...';
+  try {
+    await ensureGateHashExists();
+    const snap = await getDoc(doc(db,'financeiro','acesso'));
+    const storedHash = snap.exists() ? snap.data().codeHash : null;
+    const inputHash = await sha256(input);
+    if(storedHash && inputHash === storedHash){
+      localStorage.setItem('financeiro_gate_ok','true');
+      document.getElementById('passwordGate').style.display='none';
+      document.getElementById('loading').style.display='flex';
+      startApp();
+    } else {
+      errEl.textContent = 'Código incorreto. Tente novamente.';
+      document.getElementById('gateInput').value='';
+      document.getElementById('gateInput').focus();
+    }
+  } catch(e){
+    console.error(e);
+    errEl.textContent = 'Erro de conexão. Verifique a internet.';
+  }
+}
+
+function startApp(){
+  loadFromFirebase().then(()=>startRealtimeSync());
+}
+
+// Se já validou antes neste dispositivo, pula direto pro app
+if(localStorage.getItem('financeiro_gate_ok')==='true'){
+  document.getElementById('passwordGate').style.display='none';
+  document.getElementById('loading').style.display='flex';
+  startApp();
+} else {
+  document.getElementById('gateInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter') checkGatePassword();
+  });
+  setTimeout(()=>document.getElementById('gateInput')?.focus(), 300);
+}
+
+window.checkGatePassword = checkGatePassword;
+
 </script>
 </body>
 </html>
