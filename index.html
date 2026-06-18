@@ -23,7 +23,14 @@
 html{font-size:14px}
 body{font-family:'Inter',sans-serif;background:var(--creme);color:var(--cinza);min-height:100vh;display:flex}
 /* SIDEBAR */
-.sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--verde);display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100;padding:0 0 20px}
+.sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--verde);display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100;padding:0 0 0}
+
+/* No desktop, este bloco fica fixo colado embaixo da sidebar (mesma largura/cor),
+   completando visualmente a coluna verde lateral */
+#statusActionsBlock{
+  position:fixed;left:0;bottom:0;width:var(--sidebar-w);
+  background:var(--verde);z-index:100;padding-bottom:20px;
+}
 .sidebar-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
 .sidebar-logo h1{font-family:'DM Serif Display',serif;color:var(--ouro);font-size:1.2rem;line-height:1.2}
 .sidebar-logo p{color:rgba(255,255,255,.5);font-size:.72rem;margin-top:3px}
@@ -195,28 +202,48 @@ tr:hover td{background:#fafafa}
   .nav-item.active{border-bottom-color:var(--ouro);border-left:none;background:rgba(201,168,76,.15)}
   .nav-item svg{width:15px;height:15px}
 
-  /* Termômetro, sync status, user badge: colapsam em uma linha compacta */
-  .thermometer{margin:8px 16px 0;padding:10px 12px}
-  .thermo-label{font-size:.62rem;margin-bottom:6px}
-  .thermo-value{font-size:.78rem}
-  .thermo-sub{font-size:.62rem}
+  /* No mobile, este bloco sai do "fixed" do desktop e passa a fluir
+     normalmente no topo do conteúdo, com fundo verde emendando o header sticky */
+  #statusActionsBlock{
+    position:static;width:100%;padding:0 0 14px;
+    border-radius:0 0 18px 18px;
+  }
 
-  /* Sync status + last update + user badge: compactos, empilhados mas pequenos */
-  #syncStatus{margin:6px 16px 0;padding:5px 10px;font-size:.66rem;width:auto}
-  #lastUpdateBox{margin:4px 16px 0;padding:5px 10px;font-size:.62rem}
+  /* Termômetro: mais compacto */
+  .thermometer{margin:8px 16px 0;padding:8px 12px}
+  .thermo-label{font-size:.6rem;margin-bottom:5px}
+  .thermo-track{height:5px}
+  .thermo-value{font-size:.76rem;margin-top:5px}
+  .thermo-sub{font-size:.6rem}
+
+  /* Sync status + last update + user badge: tudo em UMA linha compacta,
+     em vez de três blocos empilhados — corta bastante altura do header */
+  #syncStatus,#lastUpdateBox,#userBadgeBox{
+    display:inline-flex;align-items:center;width:auto;
+    margin:6px 4px 0 0;padding:4px 9px;font-size:.62rem;
+    border-radius:20px;vertical-align:top;
+  }
+  #syncStatus{margin-left:16px}
+  #userBadgeBox{margin-right:16px;justify-content:flex-start;gap:4px}
+  #lastUpdateBox{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #lastUpdateBox br{display:none}
-  #userBadgeBox{margin:4px 16px 8px;padding:5px 10px;font-size:.68rem}
+  #lastUpdateBox strong{font-weight:600}
+  /* Esconde a data/hora completa no chip compacto (cabe só "Ricardo")  */
+  #lastUpdateBox .full-when{display:none}
 
-  /* Botões de ação: fixos como barra inferior sticky, fáceis pro dedão */
+  /* Botões de ação: agora ficam no fim do bloco verde compacto do topo,
+     não mais fixos no rodapé (rodapé causava sobreposição com conteúdo) */
   .sidebar-actions{
-    padding:8px 12px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.1);
+    padding:10px 16px 4px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.1);
+    margin-top:8px;
   }
   .btn-add{margin-bottom:0;padding:11px 8px;font-size:.74rem;flex:1}
   .btn-add svg{width:14px;height:14px}
 
-  /* Conteúdo principal: ocupa tudo, com respiro pro header fixo */
+  /* Conteúdo principal: já não precisa de respiro extra pra header fixo,
+     nem de padding-bottom grande (botões não são mais barra fixa no rodapé) */
   .main{
-    margin-left:0;padding:14px 12px 90px;
+    margin-left:0;padding:14px 12px 24px;
     padding-top:14px;
     max-width:100vw;
     overflow-x:hidden;
@@ -250,13 +277,20 @@ tr:hover td{background:#fafafa}
   /* Metas grid: 1 coluna no celular */
   .meta-grid{grid-template-columns:1fr;gap:10px}
 
-  /* Tabelas: scroll horizontal no CONTAINER, mantendo a table intacta
-     (display:block em table/thead/tbody quebra o alinhamento de colunas — corrigido) */
+  /* Tabelas: agora cabem na largura da tela (categoria foi pra dentro da
+     célula de descrição), sem precisar de scroll horizontal nem min-width forçado */
   .table-wrap{margin-bottom:14px;border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .table-wrap table{min-width:460px;white-space:nowrap}
-  th{padding:8px 10px;font-size:.66rem}
-  td{padding:9px 10px;font-size:.8rem}
-  .btn-edit,.btn-del{padding:6px;font-size:1rem}
+  .table-wrap table{width:100%;table-layout:fixed}
+  .table-wrap td,.table-wrap th{white-space:normal;word-break:break-word;overflow:hidden}
+  .table-wrap td:first-child,.table-wrap th:first-child{width:auto}
+  .table-wrap td:last-child,.table-wrap th:last-child{width:64px;white-space:nowrap}
+  th{padding:8px 8px;font-size:.64rem}
+  td{padding:9px 8px;font-size:.78rem}
+  .btn-edit,.btn-del{padding:4px;font-size:.92rem}
+  .tag{font-size:.62rem;padding:1px 7px}
+  /* Tabelas largas (Resumo Anual, 6 colunas) precisam de scroll horizontal real */
+  .table-wrap.wide table{width:auto;min-width:480px;table-layout:auto}
+  .table-wrap.wide td,.table-wrap.wide th{white-space:nowrap;width:auto}
 
   .section-title{font-size:1.05rem}
   .section-sub{font-size:.72rem}
@@ -312,7 +346,7 @@ tr:hover td{background:#fafafa}
 @supports(padding:max(0px)){
   @media(max-width:768px){
     .sidebar{padding-top:env(safe-area-inset-top)}
-    .main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+    .main{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
   }
   .modal{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 }
@@ -373,6 +407,11 @@ tr:hover td{background:#fafafa}
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Investimentos
     </div>
   </nav>
+</aside>
+
+<!-- Bloco compacto: status + ações. No desktop fica dentro da sidebar (via JS move),
+     no mobile fica no topo do conteúdo rolável, logo após o cabeçalho fixo -->
+<div id="statusActionsBlock">
   <div class="thermometer">
     <div class="thermo-label">Saúde Financeira</div>
     <div class="thermo-track"><div class="thermo-fill" id="thermoFill" style="width:50%"></div></div>
@@ -401,7 +440,7 @@ tr:hover td{background:#fafafa}
       <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Investimento
     </button>
   </div>
-</aside>
+</div>
 
 <!-- MAIN -->
 <main class="main">
@@ -432,7 +471,7 @@ tr:hover td{background:#fafafa}
         <div><div class="section-title">💸 Gastos</div><div class="section-sub" id="gastos-count">—</div></div>
         <button class="btn btn-danger" onclick="openModal('gasto')" style="font-size:.78rem;padding:7px 12px">+ Novo</button>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th class="text-right">Valor</th><th></th></tr></thead><tbody id="tbl-gastos"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th class="text-right">Valor</th><th></th></tr></thead><tbody id="tbl-gastos"></tbody></table></div>
     </div>
     <div>
       <div class="section-header">
@@ -595,13 +634,13 @@ function changeUser(){
 
 function updateLastEditDisplay(updatedBy, updatedAt){
   const el = document.getElementById('lastUpdateText');
-  if(!updatedBy){ el.textContent = 'Nenhuma alteração registrada ainda'; return; }
+  if(!updatedBy){ el.textContent = 'Sem alterações ainda'; return; }
   let when = '';
   try {
     const d = new Date(updatedAt);
     when = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   } catch(e){ when = ''; }
-  el.innerHTML = '✏️ Última alteração por <strong style="color:#fff">'+updatedBy+'</strong>'+(when?'<br><span style="opacity:.7">'+when+'</span>':'');
+  el.innerHTML = '✏️ '+updatedBy+(when?' <span class="full-when" style="opacity:.7">— '+when+'</span>':'');
 }
 
 // ── FIREBASE LOAD & SAVE ─────────────────────────────────────────────────────
@@ -758,7 +797,7 @@ function updateMensal(){
   document.getElementById('mensal-summary').innerHTML=`<div class="sumbar-item"><div class="sumbar-label">Receitas</div><div class="sumbar-val" style="color:#16A34A">${R(rec)}</div><div class="progress-bar"><div class="progress-fill" style="width:100%;background:#16A34A"></div></div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Gastos</div><div class="sumbar-val" style="color:#DC2626">${R(gas)}</div><div class="progress-bar"><div class="progress-fill" style="width:${rec>0?Math.min(100,gas/rec*100):0}%;background:#DC2626"></div></div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Saldo</div><div class="sumbar-val" style="color:${s>=0?'#16A34A':'#DC2626'}">${R(s)}</div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Poupança</div><div class="sumbar-val" style="color:${p>=0.2?'#16A34A':'#C9A84C'}">${P(p)}</div><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,p*100)}%;background:${p>=0.2?'#16A34A':'#C9A84C'}"></div></div></div>`;
   const gs=getM(currentMonth).gastos||[];
   document.getElementById('gastos-count').textContent=gs.length+' lançamentos — '+R(gas);
-  document.getElementById('tbl-gastos').innerHTML=gs.length?gs.map((g,i)=>`<tr><td><strong>${g.desc}</strong></td><td><span class="tag ${CAT_CSS[cat(g.desc)]||'cat-outros'}">${cat(g.desc)}</span></td><td class="text-right amt neg">${R(g.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('gasto',${i})">✏️</button><button class="btn-del" onclick="deleteItem('gasto',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Nenhum gasto. Clique em "+ Novo".</td></tr>';
+  document.getElementById('tbl-gastos').innerHTML=gs.length?gs.map((g,i)=>`<tr><td><strong>${g.desc}</strong><br><span class="tag ${CAT_CSS[cat(g.desc)]||'cat-outros'}" style="margin-top:4px;display:inline-block">${cat(g.desc)}</span></td><td class="text-right amt neg">${R(g.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('gasto',${i})">✏️</button><button class="btn-del" onclick="deleteItem('gasto',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nenhum gasto. Clique em "+ Novo".</td></tr>';
   const rs=getM(currentMonth).receitas||[];
   document.getElementById('receitas-count').textContent=rs.length+' lançamentos — '+R(rec);
   document.getElementById('tbl-receitas').innerHTML=rs.length?rs.map((r,i)=>`<tr><td><strong>${r.desc}</strong></td><td class="text-right amt pos">${R(r.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('receita',${i})">✏️</button><button class="btn-del" onclick="deleteItem('receita',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nenhuma receita lançada.</td></tr>';
@@ -772,7 +811,7 @@ function updateAnual(){
     let tR2=0,tG2=0,rows='';
     mK.forEach(k=>{const r=tR(k),g=tG(k),s=r-g;tR2+=r;tG2+=g;const[,m]=k.split('-');rows+=`<tr><td><strong>${MN[m]}</strong></td><td class="text-right amt pos">${R(r)}</td><td class="text-right amt neg">${R(g)}</td><td class="text-right ${s>=0?'saldo-pos':'saldo-neg'}">${R(s)}</td><td class="text-right">${r>0?P(g/r):'—'}</td><td class="text-right">${r>0?P(Math.max(0,(r-g)/r)):'—'}</td></tr>`});
     const sT=tR2-tG2;
-    return`<div class="year-section"><div class="year-title">${y}</div><div class="table-wrap" style="border-radius:0 0 12px 12px"><table><thead><tr><th>Mês</th><th class="text-right">Receita</th><th class="text-right">Gasto</th><th class="text-right">Saldo</th><th class="text-right">% Gasto</th><th class="text-right">Poupança</th></tr></thead><tbody>${rows}</tbody><tfoot><tr style="background:#f8f9ff"><td class="bold">TOTAL ${y}</td><td class="text-right amt pos bold">${R(tR2)}</td><td class="text-right amt neg bold">${R(tG2)}</td><td class="text-right bold ${sT>=0?'saldo-pos':'saldo-neg'}">${R(sT)}</td><td class="text-right bold">${tR2>0?P(tG2/tR2):'—'}</td><td class="text-right bold">${tR2>0?P(Math.max(0,sT/tR2)):'—'}</td></tr></tfoot></table></div></div>`}).join('');
+    return`<div class="year-section"><div class="year-title">${y}</div><div class="table-wrap wide" style="border-radius:0 0 12px 12px"><table><thead><tr><th>Mês</th><th class="text-right">Receita</th><th class="text-right">Gasto</th><th class="text-right">Saldo</th><th class="text-right">% Gasto</th><th class="text-right">Poupança</th></tr></thead><tbody>${rows}</tbody><tfoot><tr style="background:#f8f9ff"><td class="bold">TOTAL ${y}</td><td class="text-right amt pos bold">${R(tR2)}</td><td class="text-right amt neg bold">${R(tG2)}</td><td class="text-right bold ${sT>=0?'saldo-pos':'saldo-neg'}">${R(sT)}</td><td class="text-right bold">${tR2>0?P(tG2/tR2):'—'}</td><td class="text-right bold">${tR2>0?P(Math.max(0,sT/tR2)):'—'}</td></tr></tfoot></table></div></div>`}).join('');
 }
 
 // ── CATEGORIAS ────────────────────────────────────────────────────────────────
