@@ -91,6 +91,27 @@ td{padding:9px 14px;border-bottom:1px solid #f3f4f6;font-size:.83rem;vertical-al
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafafa}
 .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:600}
+/* Check circle — clicável direto na linha */
+.check-circle{
+  width:26px;height:26px;border-radius:50%;border:2px solid #d1d5db;
+  background:#fff;cursor:pointer;flex-shrink:0;display:inline-flex;
+  align-items:center;justify-content:center;transition:.2s;font-size:.85rem;
+  -webkit-tap-highlight-color:transparent;
+}
+.check-circle:hover{border-color:var(--verde-m)}
+.check-circle.pago{background:var(--verde-m);border-color:var(--verde-m);color:#fff}
+.check-circle.recebido{background:var(--verde-m);border-color:var(--verde-m);color:#fff}
+/* Linha paga: texto esmaecido, não riscado (mais limpo visualmente) */
+tr.item-pago td{opacity:.55}
+tr.item-pago td:first-child strong{text-decoration:line-through;text-decoration-color:#9ca3af}
+/* Data de vencimento/recebimento */
+.data-badge{
+  font-size:.68rem;color:var(--cinza-m);white-space:nowrap;
+  display:inline-flex;align-items:center;gap:3px;margin-top:2px;
+}
+.data-badge.vencido{color:var(--vermelho);font-weight:600}
+.data-badge.hoje{color:var(--ouro);font-weight:600}
+.data-badge.futuro{color:var(--verde-m)}
 .amt{font-family:'JetBrains Mono',monospace;font-weight:600}
 .amt.neg{color:var(--vermelho)}.amt.pos{color:var(--verde-m)}
 .btn-del{background:none;border:none;color:#d1d5db;cursor:pointer;padding:3px;border-radius:4px;transition:.12s;font-size:.9rem}
@@ -471,14 +492,14 @@ tr:hover td{background:#fafafa}
         <div><div class="section-title">💸 Gastos</div><div class="section-sub" id="gastos-count">—</div></div>
         <button class="btn btn-danger" onclick="openModal('gasto')" style="font-size:.78rem;padding:7px 12px">+ Novo</button>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th class="text-right">Valor</th><th></th></tr></thead><tbody id="tbl-gastos"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th style="width:36px"></th><th>Descrição</th><th class="text-right" style="width:100px">Valor</th><th></th></tr></thead><tbody id="tbl-gastos"></tbody></table></div>
     </div>
     <div>
       <div class="section-header">
         <div><div class="section-title">💰 Receitas</div><div class="section-sub" id="receitas-count">—</div></div>
         <button class="btn btn-primary" onclick="openModal('receita')" style="font-size:.78rem;padding:7px 12px">+ Nova</button>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th class="text-right">Valor</th><th></th></tr></thead><tbody id="tbl-receitas"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th style="width:36px"></th><th>Descrição</th><th class="text-right" style="width:100px">Valor</th><th></th></tr></thead><tbody id="tbl-receitas"></tbody></table></div>
     </div>
   </div>
 </section>
@@ -576,6 +597,20 @@ const SEED = {"2026-08":{"gastos":[{"desc":"BANESCARD VISA","valor":6000},{"desc
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let data = {};
 let currentMonth = '2026-08';
+
+// Migração: itens sem campo 'pago' (lançados antes desta versão) → marcados como pagos
+// Apenas itens de meses passados; o mês atual e futuros ficam pendentes
+function migrateLegacyItems(){
+  const [cy, cm] = currentMonth.split('-').map(Number);
+  Object.keys(data).forEach(key => {
+    const [ky, km] = key.split('-').map(Number);
+    const isPast = ky < cy || (ky === cy && km < cm);
+    const d = data[key];
+    if(d.gastos) d.gastos.forEach(g => { if(g.pago === undefined) g.pago = isPast; });
+    if(d.receitas) d.receitas.forEach(r => { if(r.pago === undefined) r.pago = isPast; });
+  });
+}
+
 let modalMode = null, editId = null, charts = {};
 let saveTimeout = null;
 
@@ -653,17 +688,20 @@ async function loadFromFirebase(){
     if(snap.exists()){
       const d = snap.data();
       data = d.meses || {};
+      migrateLegacyItems(); // marca itens antigos (sem pago) como pagos
       updateLastEditDisplay(d.updatedBy, d.updatedAt);
       setSyncStatus('ok','Dados carregados ✓');
     } else {
       // Primeira vez: sobe o SEED
       data = JSON.parse(JSON.stringify(SEED));
+      migrateLegacyItems();
       await saveToFirebase(true);
       setSyncStatus('ok','Dados inicializados ✓');
     }
   } catch(e){
     console.error(e);
     data = JSON.parse(JSON.stringify(SEED));
+    migrateLegacyItems();
     setSyncStatus('error','Offline — usando dados locais');
   }
   buildMonthSelect();
@@ -791,16 +829,57 @@ function buildCharts(){
 }
 
 // ── MÊS ATUAL ─────────────────────────────────────────────────────────────────
+function dateBadge(dataStr, pago){
+  if(!dataStr) return '';
+  const [d,m] = dataStr.split('/');
+  const [cy,cm] = currentMonth.split('-');
+  const venc = new Date(parseInt(cy), parseInt(m)-1, parseInt(d));
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.floor((venc - today) / 86400000);
+  let cls = 'futuro', icon = '📅';
+  if(pago){ cls = ''; icon = ''; }
+  else if(diff < 0){ cls = 'vencido'; icon = '⚠️'; }
+  else if(diff === 0){ cls = 'hoje'; icon = '🔔'; }
+  else if(diff <= 3){ cls = 'hoje'; icon = '📅'; }
+  return `<div class="data-badge ${cls}">${icon} ${dataStr}</div>`;
+}
+
 function updateMensal(){
   const[y,m]=currentMonth.split('-');document.getElementById('mensal-title').textContent=MN[m]+' / '+y;
   const rec=tR(currentMonth),gas=tG(currentMonth),s=rec-gas,p=rec>0?Math.max(0,s/rec):0;
   document.getElementById('mensal-summary').innerHTML=`<div class="sumbar-item"><div class="sumbar-label">Receitas</div><div class="sumbar-val" style="color:#16A34A">${R(rec)}</div><div class="progress-bar"><div class="progress-fill" style="width:100%;background:#16A34A"></div></div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Gastos</div><div class="sumbar-val" style="color:#DC2626">${R(gas)}</div><div class="progress-bar"><div class="progress-fill" style="width:${rec>0?Math.min(100,gas/rec*100):0}%;background:#DC2626"></div></div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Saldo</div><div class="sumbar-val" style="color:${s>=0?'#16A34A':'#DC2626'}">${R(s)}</div></div><div class="sumbar-div"></div><div class="sumbar-item"><div class="sumbar-label">Poupança</div><div class="sumbar-val" style="color:${p>=0.2?'#16A34A':'#C9A84C'}">${P(p)}</div><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,p*100)}%;background:${p>=0.2?'#16A34A':'#C9A84C'}"></div></div></div>`;
+
   const gs=getM(currentMonth).gastos||[];
-  document.getElementById('gastos-count').textContent=gs.length+' lançamentos — '+R(gas);
-  document.getElementById('tbl-gastos').innerHTML=gs.length?gs.map((g,i)=>`<tr><td><strong>${g.desc}</strong><br><span class="tag ${CAT_CSS[cat(g.desc)]||'cat-outros'}" style="margin-top:4px;display:inline-block">${cat(g.desc)}</span></td><td class="text-right amt neg">${R(g.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('gasto',${i})">✏️</button><button class="btn-del" onclick="deleteItem('gasto',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nenhum gasto. Clique em "+ Novo".</td></tr>';
+  const totalPago=gs.filter(g=>g.pago).reduce((s,g)=>s+g.valor,0);
+  const totalPendente=gs.filter(g=>!g.pago).reduce((s,g)=>s+g.valor,0);
+  document.getElementById('gastos-count').textContent=`${gs.length} lançamentos — ${R(gas)} | ✅ ${R(totalPago)} pagos · ⏳ ${R(totalPendente)} pendentes`;
+  document.getElementById('tbl-gastos').innerHTML=gs.length?gs.map((g,i)=>{
+    const pago=!!g.pago;
+    const check=`<button class="check-circle ${pago?'pago':''}" onclick="togglePago('gasto',${i})" title="${pago?'Marcar como pendente':'Marcar como pago'}">${pago?'✓':''}</button>`;
+    const badge=dateBadge(g.data||'', pago);
+    return `<tr class="${pago?'item-pago':''}">
+      <td style="text-align:center;padding-right:4px">${check}</td>
+      <td><strong>${g.desc}</strong>${badge}<span class="tag ${CAT_CSS[cat(g.desc)]||'cat-outros'}" style="margin-top:3px;display:inline-block">${cat(g.desc)}</span></td>
+      <td class="text-right amt neg">${R(g.valor)}</td>
+      <td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('gasto',${i})">✏️</button><button class="btn-del" onclick="deleteItem('gasto',${i})">✕</button></td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="4" class="empty">Nenhum gasto. Clique em "+ Novo".</td></tr>';
+
   const rs=getM(currentMonth).receitas||[];
-  document.getElementById('receitas-count').textContent=rs.length+' lançamentos — '+R(rec);
-  document.getElementById('tbl-receitas').innerHTML=rs.length?rs.map((r,i)=>`<tr><td><strong>${r.desc}</strong></td><td class="text-right amt pos">${R(r.valor)}</td><td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('receita',${i})">✏️</button><button class="btn-del" onclick="deleteItem('receita',${i})">✕</button></td></tr>`).join(''):'<tr><td colspan="3" class="empty">Nenhuma receita lançada.</td></tr>';
+  const totalRecebido=rs.filter(r=>r.pago).reduce((s,r)=>s+r.valor,0);
+  const totalAReceber=rs.filter(r=>!r.pago).reduce((s,r)=>s+r.valor,0);
+  document.getElementById('receitas-count').textContent=`${rs.length} lançamentos — ${R(rec)} | ✅ ${R(totalRecebido)} recebidos · ⏳ ${R(totalAReceber)} a receber`;
+  document.getElementById('tbl-receitas').innerHTML=rs.length?rs.map((r,i)=>{
+    const recebido=!!r.pago;
+    const check=`<button class="check-circle ${recebido?'recebido':''}" onclick="togglePago('receita',${i})" title="${recebido?'Marcar como pendente':'Marcar como recebido'}">${recebido?'✓':''}</button>`;
+    const badge=dateBadge(r.data||'', recebido);
+    return `<tr class="${recebido?'item-pago':''}">
+      <td style="text-align:center;padding-right:4px">${check}</td>
+      <td><strong>${r.desc}</strong>${badge}</td>
+      <td class="text-right amt pos">${R(r.valor)}</td>
+      <td class="text-right" style="white-space:nowrap"><button class="btn-edit" onclick="editItem('receita',${i})">✏️</button><button class="btn-del" onclick="deleteItem('receita',${i})">✕</button></td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="4" class="empty">Nenhuma receita lançada.</td></tr>';
 }
 
 // ── RESUMO ANUAL ──────────────────────────────────────────────────────────────
@@ -874,26 +953,63 @@ function openModal(mode,prefill){
   modalMode=mode;editId=prefill?prefill.id:null;
   const body=document.getElementById('modal-body'),footer=document.getElementById('modal-footer'),title=document.getElementById('modal-title');
   const monthOpts=allK().map(k=>`<option value="${k}"${k===currentMonth?' selected':''}>${mLabel(k)}</option>`).join('')+'<option value="__new__">+ Criar novo mês</option>';
+
   if(mode==='gasto'){
     title.innerHTML='💸 '+(editId!==null?'Editar Gasto':'Novo Gasto');
-    body.innerHTML=`<div class="modal-row"><label>Descrição</label><input type="text" id="m-desc" placeholder="Ex: SUPERMERCADO" value="${prefill?prefill.desc:''}" list="dl" autocomplete="off"><datalist id="dl">${(getM(currentMonth).gastos||[]).map(g=>`<option value="${g.desc}">`).join('')}</datalist></div><div class="modal-two"><div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01" value="${prefill?prefill.valor:''}"></div><div class="modal-row"><label>Categoria</label><select id="m-cat">${[...Object.keys(CATS),'Outros'].map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div></div><div class="modal-two"><div class="modal-row"><label>Mês</label><select id="m-month">${monthOpts}</select></div><div class="modal-row"><label>Recorrente?</label><select id="m-rec"><option value="0">Não</option><option value="3">Sim — próx. 3 meses</option></select></div></div>`;
+    const pagoChecked = prefill && prefill.pago ? 'checked' : '';
+    const dataVal = prefill && prefill.data ? prefill.data : '';
+    body.innerHTML=`
+      <div class="modal-row"><label>Descrição</label>
+        <input type="text" id="m-desc" placeholder="Ex: SUPERMERCADO" value="${prefill?prefill.desc:''}" list="dl" autocomplete="off">
+        <datalist id="dl">${(getM(currentMonth).gastos||[]).map(g=>`<option value="${g.desc}">`).join('')}</datalist>
+      </div>
+      <div class="modal-two">
+        <div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01" value="${prefill?prefill.valor:''}"></div>
+        <div class="modal-row"><label>Vencimento (DD/MM)</label><input type="text" id="m-data" placeholder="Ex: 10/07" value="${dataVal}" maxlength="5" pattern="[0-9]{2}/[0-9]{2}"></div>
+      </div>
+      <div class="modal-two">
+        <div class="modal-row"><label>Mês</label><select id="m-month">${monthOpts}</select></div>
+        <div class="modal-row"><label>Recorrente?</label><select id="m-rec"><option value="0">Não</option><option value="3">Sim — próx. 3 meses</option></select></div>
+      </div>
+      <div class="modal-row" style="display:flex;align-items:center;gap:10px;background:var(--verde-l);padding:10px 12px;border-radius:9px">
+        <input type="checkbox" id="m-pago" ${pagoChecked} style="width:18px;height:18px;cursor:pointer;accent-color:var(--verde-m)">
+        <label for="m-pago" style="cursor:pointer;font-weight:600;color:var(--verde-m);font-size:.9rem;margin:0">✅ Marcar como já pago</label>
+      </div>`;
     footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>${editId!==null?'<button class="btn btn-secondary" onclick="deleteItemFromModal()">🗑 Excluir</button>':''}<button class="btn btn-danger" onclick="saveItem()">Salvar Gasto</button>`;
+
   } else if(mode==='receita'){
     title.innerHTML='💰 '+(editId!==null?'Editar Receita':'Nova Receita');
-    body.innerHTML=`<div class="modal-row"><label>Descrição</label><input type="text" id="m-desc" placeholder="Ex: SALÁRIO RICARDO" value="${prefill?prefill.desc:''}"></div><div class="modal-two"><div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01" value="${prefill?prefill.valor:''}"></div><div class="modal-row"><label>Mês</label><select id="m-month">${monthOpts}</select></div></div>`;
+    const recebidoChecked = prefill && prefill.pago ? 'checked' : '';
+    const dataVal = prefill && prefill.data ? prefill.data : '';
+    body.innerHTML=`
+      <div class="modal-row"><label>Descrição</label>
+        <input type="text" id="m-desc" placeholder="Ex: SALÁRIO RICARDO" value="${prefill?prefill.desc:''}">
+      </div>
+      <div class="modal-two">
+        <div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01" value="${prefill?prefill.valor:''}"></div>
+        <div class="modal-row"><label>Data de Recebimento (DD/MM)</label><input type="text" id="m-data" placeholder="Ex: 05/07" value="${dataVal}" maxlength="5" pattern="[0-9]{2}/[0-9]{2}"></div>
+      </div>
+      <div class="modal-row"><label>Mês</label><select id="m-month">${monthOpts}</select></div>
+      <div class="modal-row" style="display:flex;align-items:center;gap:10px;background:var(--verde-l);padding:10px 12px;border-radius:9px">
+        <input type="checkbox" id="m-pago" ${recebidoChecked} style="width:18px;height:18px;cursor:pointer;accent-color:var(--verde-m)">
+        <label for="m-pago" style="cursor:pointer;font-weight:600;color:var(--verde-m);font-size:.9rem;margin:0">✅ Marcar como já recebido</label>
+      </div>`;
     footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>${editId!==null?'<button class="btn btn-secondary" onclick="deleteItemFromModal()">🗑 Excluir</button>':''}<button class="btn btn-primary" onclick="saveItem()">Salvar Receita</button>`;
+
   } else if(mode==='investimento'){
     title.innerHTML='📈 Novo Investimento';
     body.innerHTML=`<div class="modal-row"><label>Descrição</label><input type="text" id="m-desc" value="INVESTIMENTO"></div><div class="modal-two"><div class="modal-row"><label>Valor (R$)</label><input type="number" id="m-valor" placeholder="0.00" step="0.01"></div><div class="modal-row"><label>Tipo</label><select id="m-tipo"><option>Tesouro Direto</option><option>CDB</option><option>Fundo</option><option>Ações</option><option>FII</option><option>Poupança</option><option>Outros</option></select></div></div><div class="modal-row"><label>Mês</label><select id="m-month">${allK().map(k=>`<option value="${k}"${k===currentMonth?' selected':''}>${mLabel(k)}</option>`).join('')}</select></div>`;
     footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveItem()">Registrar</button>`;
+
   } else if(mode==='meta'){
     title.innerHTML='🎯 Orçamento por Categoria';
     loadBudgets().then(budgets=>{
-      body.innerHTML=`<p style="color:var(--cinza-m);font-size:.82rem;margin-bottom:12px">Defina o orçamento mensal por categoria. As barras ficam verdes/vermelhas automaticamente.</p>`+[...Object.keys(CATS),'Outros'].map(c=>`<div class="modal-two" style="margin-bottom:7px"><div class="modal-row" style="margin:0"><label style="color:var(--cinza);font-weight:600;font-size:.83rem;padding-top:7px;display:block">${c}</label></div><div class="modal-row" style="margin:0"><input type="number" id="bgt-${c.replace(/[^a-z]/gi,'_')}" value="${budgets[c]||0}" placeholder="R$"></div></div>`).join('');
+      body.innerHTML=`<p style="color:var(--cinza-m);font-size:.82rem;margin-bottom:12px">Defina o orçamento mensal por categoria.</p>`+[...Object.keys(CATS),'Outros'].map(c=>`<div class="modal-two" style="margin-bottom:7px"><div class="modal-row" style="margin:0"><label style="color:var(--cinza);font-weight:600;font-size:.83rem;padding-top:7px;display:block">${c}</label></div><div class="modal-row" style="margin:0"><input type="number" id="bgt-${c.replace(/[^a-z]/gi,'_')}" value="${budgets[c]||0}" placeholder="R$"></div></div>`).join('');
       footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveBudgets()">Salvar Metas</button>`;
     });
     body.innerHTML='<div style="padding:20px;text-align:center;color:var(--cinza-m)">Carregando...</div>';
     footer.innerHTML='';
+
   } else if(mode==='newmonth'){
     title.innerHTML='📅 Novo Mês';
     body.innerHTML=`<div class="modal-two"><div class="modal-row"><label>Ano</label><input type="number" id="m-ano" value="2026" min="2020" max="2030"></div><div class="modal-row"><label>Mês</label><select id="m-mes">${Object.entries(MN).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div></div><div class="modal-row" style="background:var(--ouro-l);padding:10px;border-radius:8px;font-size:.82rem;color:#92400E">💡 Novo mês criado vazio. Você pode copiar os gastos fixos do mês anterior automaticamente.</div><div class="modal-row"><label><input type="checkbox" id="m-dup" style="margin-right:5px"> Copiar gastos fixos recorrentes do mês anterior</label></div>`;
@@ -910,17 +1026,30 @@ async function saveItem(){
   const desc=(document.getElementById('m-desc')?.value||'').trim().toUpperCase();
   const valor=parseFloat(document.getElementById('m-valor')?.value)||0;
   const ms=document.getElementById('m-month')?.value||currentMonth;
+  const dataInput=(document.getElementById('m-data')?.value||'').trim();
+  const pagoChecked=document.getElementById('m-pago')?.checked ?? false;
   if(!desc){showToast('⚠️ Preencha a descrição',true);return}
   if(valor<=0){showToast('⚠️ Valor inválido',true);return}
   if(ms==='__new__'){openModal('newmonth');return}
   if(!data[ms])data[ms]={gastos:[],receitas:[]};
   const recorrente=parseInt(document.getElementById('m-rec')?.value||'0');
-  const item={desc,valor};
   const tipo=(modalMode==='gasto'||modalMode==='investimento')?'gastos':'receitas';
-  // Salva no mês selecionado
+
+  // Validação simples do formato DD/MM
+  let dataFinal = '';
+  if(dataInput){
+    const match = dataInput.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if(match){
+      dataFinal = String(match[1]).padStart(2,'0') + '/' + String(match[2]).padStart(2,'0');
+    } else {
+      showToast('⚠️ Data inválida. Use DD/MM (ex: 10/07)',true); return;
+    }
+  }
+
+  const item={desc, valor, pago: pagoChecked, data: dataFinal};
   if(editId!==null) data[ms][tipo][editId]=item;
   else data[ms][tipo].push(item);
-  // Se recorrente, adiciona nos próximos meses
+
   if(recorrente>0 && editId===null){
     const [ry,rm]=ms.split('-').map(Number);
     for(let i=1;i<recorrente;i++){
@@ -929,7 +1058,8 @@ async function saveItem(){
       const nk=ny+'-'+(String(nm).padStart(2,'0'));
       if(!data[nk])data[nk]={gastos:[],receitas:[]};
       if(!data[nk][tipo])data[nk][tipo]=[];
-      data[nk][tipo].push({...item});
+      // Para meses futuros recorrentes, sempre pendente (não pago)
+      data[nk][tipo].push({...item, pago: false});
     }
   }
   closeModal();
@@ -938,6 +1068,15 @@ async function saveItem(){
   buildMonthSelect();
   updateAll();
   showToast(tipo==='gastos'?'✅ Gasto salvo':'✅ Receita salva');
+}
+
+async function togglePago(type, idx){
+  const m = getM(currentMonth);
+  const list = type === 'gasto' ? m.gastos : m.receitas;
+  if(!list[idx]) return;
+  list[idx].pago = !list[idx].pago;
+  updateMensal(); // atualiza UI imediatamente sem esperar Firebase
+  await saveToFirebase();
 }
 
 function editItem(type,idx){const m=getM(currentMonth),item=type==='gasto'?m.gastos[idx]:m.receitas[idx];openModal(type,{...item,id:idx})}
@@ -1037,7 +1176,7 @@ window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 window.saveItem=saveItem;window.editItem=editItem;window.deleteItem=deleteItem;
 window.deleteItemFromModal=deleteItemFromModal;window.saveBudgets=saveBudgets;
 window.createNewMonth=createNewMonth;window.calcProjecao=calcProjecao;window.saveInvestParams=saveInvestParams;window.openInvestPage=openInvestPage;
-window.changeUser=changeUser;
+window.changeUser=changeUser;window.togglePago=togglePago;
 
 // ── LISTENER EM TEMPO REAL ──────────────────────────────────────────────────
 // Se a outra pessoa salvar algo enquanto esta página está aberta, atualiza sozinho.
